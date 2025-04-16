@@ -1,21 +1,39 @@
-# AppFolio MCP Server (MVP)
+# Appfolio MCP Server (@fluegeldao/appfolio-mcp-server)
 
-## Setup
-1. Copy `.env.example` to `.env` and fill in your AppFolio credentials and vhost.
-2. Install dependencies: `npm install`
-3. Build: `npm run build`
-4. Run: `npm start`
+A Model Context Protocol (MCP) server providing tools to interact with the Appfolio Property Manager Reporting API.
+
+## Installation
+
+Install the package using npm:
+
+```bash
+npm install @fluegeldao/appfolio-mcp-server
+```
 
 ## Usage
-Send JSON requests to STDIN, receive JSON responses on STDOUT.
 
-### Example Request
-```
+### Configuration as an MCP Server
+
+```bash
 {
-  "function": "get_cashflow_report",
-  "args": {
-    "property_visibility": "active",
-    ...
+  // ... other server configurations
+  "appfolio": {
+    "command": "npx",
+    "args": ["@fluegeldao/appfolio-mcp-server"],
+    "env": {
+      "NODE_OPTIONS": "--experimental-vm-modules", // Optional, may depend on your Node version/setup
+      "VHOST": "YOUR_APPFOLIO_HOSTNAME", // e.g., "yourcompany"
+      "USERNAME": "YOUR_APPFOLIO_API_USERNAME",
+      "PASSWORD": "YOUR_APPFOLIO_API_PASSWORD"
+    },
+    "restart": true // Optional: Restart the server if it crashes
   }
+  // ... other server configurations
 }
+```
+
+### As a Tool
+
+```bash
+npx @fluegeldao/appfolio-mcp-server
 ```
