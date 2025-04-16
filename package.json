@@ -1,11 +1,14 @@
 {
   "name": "@fluegeldao/appfolio-mcp-server",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "MCP Server for Appfolio API",
   "license": "ISC",
   "author": "CryptoCultCurt <crypto@cryptocult.money>",
   "type": "commonjs",
   "main": "dist/index.js",
+  "bin": {
+    "appfolio-mcp-server": "dist/index.js"
+  },
   "types": "dist/index.d.ts",
   "files": [
     "dist",
@@ -14,7 +17,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/CryptoCultCurt/appfolio.git"
+    "url": "git+https://github.com/CryptoCultCurt/appfolio-mcp-server.git"
   },
   "keywords": [
     "appfolio",
