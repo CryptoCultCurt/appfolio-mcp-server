@@ -417,8 +417,58 @@ export type DelinquencyAsOfArgs = {
     amount?: string;
     comparator?: string;
   };
-  columns?: string[];
+  columns?: DelinquencyColumn[];
 };
+
+export type DelinquencyColumn =
+  | 'unit'
+  | 'name'
+  | 'tenant_status'
+  | 'tags'
+  | 'phone_numbers'
+  | 'move_in'
+  | 'move_out'
+  | 'primary_tenant_email'
+  | 'unit_type'
+  | 'property'
+  | 'property_name'
+  | 'property_id'
+  | 'property_address'
+  | 'property_street'
+  | 'property_street2'
+  | 'property_city'
+  | 'property_state'
+  | 'property_zip'
+  | 'amount_receivable'
+  | 'delinquent_subsidy_amount'
+  | '00_to30'
+  | '30_plus'
+  | '30_to60'
+  | '60_plus'
+  | '60_to90'
+  | '90_plus'
+  | 'this_month'
+  | 'last_month'
+  | 'month_before_last'
+  | 'delinquent_rent'
+  | 'delinquency_notes'
+  | 'certified_funds_only'
+  | 'in_collections'
+  | 'collections_agency'
+  | 'unit_id'
+  | 'occupancy_id'
+  | 'property_group_id';
+
+export const delinquencyColumnsList: DelinquencyColumn[] = [
+  'unit', 'name', 'tenant_status', 'tags', 'phone_numbers', 'move_in', 'move_out',
+  'primary_tenant_email', 'unit_type', 'property', 'property_name', 'property_id',
+  'property_address', 'property_street', 'property_street2', 'property_city',
+  'property_state', 'property_zip', 'amount_receivable', 'delinquent_subsidy_amount',
+  '00_to30', '30_plus', '30_to60', '60_plus', '60_to90', '90_plus', 'this_month',
+  'last_month', 'month_before_last', 'delinquent_rent', 'delinquency_notes',
+  'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
+  'occupancy_id', 'property_group_id'
+];
 
 export type DelinquencyAsOfResult = {
   results: Array<{
@@ -808,6 +858,1300 @@ export type LeaseExpirationDetailResult = {
   next_page_url: string | null;
 };
 
+// --- Leasing Summary Report Types ---
+export type LeasingSummaryArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  posted_on_from: string; // Required (YYYY-MM-DD)
+  posted_on_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type LeasingSummaryResult = {
+  results: Array<{
+    unit_type: string;
+    number_of_units: number;
+    number_of_model_units: number;
+    inquiries_received: number;
+    showings_completed: number;
+    applications_received: number;
+    move_ins: number;
+    move_outs: number;
+    leased: number;
+    vacancy_postings: number;
+    number_of_active_campaigns: number;
+    number_of_ended_campaigns: number;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Loans Report Types ---
+export type LoansArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  reference_to: string; // Required
+  show_hidden_loans?: "0" | "1"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type LoansResult = {
+  results: Array<{
+    property: string;
+    property_name: string;
+    property_id: number;
+    property_address: string;
+    property_street: string;
+    property_street2: string | null;
+    property_city: string;
+    property_state: string;
+    property_zip: string;
+    loan_id: number;
+    loan_number: string;
+    vendor: string;
+    monthly_payment: string | null;
+    maturity_date: string | null;
+    ending_balance: string;
+    interest_rate: string | null;
+    next_interest_rate: string | null;
+    next_interest_rate_date: string | null;
+    escrow: string | null;
+    prepayment_penalty: string | null;
+    balloon_amount: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Occupancy Summary Report Types ---
+export type OccupancySummaryArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  as_of_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type OccupancySummaryResult = {
+  results: Array<{
+    unit_type: string;
+    number_of_units: number;
+    occupied: number;
+    percent_occupied: string;
+    average_square_feet: number;
+    average_market_rent: string | null;
+    vacant_rented: number;
+    vacant_unrented: number;
+    notice_rented: number;
+    notice_unrented: number;
+    average_rent: string | null;
+    property: string;
+    property_id: number;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Owner Leasing Report Types ---
+export type OwnerLeasingArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  received_on_from: string; // Required (YYYY-MM-DD)
+  received_on_to: string; // Required (YYYY-MM-DD)
+  include_units_which_are_not_rent_ready?: "0" | "1"; // Defaults to "0"
+  include_units_which_are_hidden_from_the_vacancies_dashboard?: "0" | "1"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type OwnerLeasingResult = {
+  results: Array<{
+    property: string;
+    unit: string;
+    applied_to: string | null;
+    unit_type: string;
+    market_rent: string | null;
+    inquiries: number;
+    showings: number;
+    applications: number;
+    approved_applications: number;
+    converted_tenants: number;
+    property_id: string;
+    unit_id: number;
+    computed_market_rent: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Property Performance Report Types ---
+export type PropertyPerformanceArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  gl_account_ids?: string[];
+  posted_on_from: string; // Required (YYYY-MM-DD)
+  posted_on_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type PropertyPerformanceResult = {
+  results: Array<{
+    property: string;
+    property_name: string;
+    property_id: number;
+    property_address: string;
+    property_street: string;
+    property_street2: string | null;
+    property_city: string;
+    property_state: string;
+    property_zip: string;
+    units: number;
+    gl_accounts: Array<{ id: number; value: string }>;
+    commission_percent: string | null;
+    site_manager: string | null;
+    property_group_id: string | null;
+    portfolio_id: number | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Property Source Tracking Report Types ---
+export type PropertySourceTrackingArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  received_on_from: string; // Required (YYYY-MM-DD)
+  received_on_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type PropertySourceTrackingResult = {
+  results: Array<{
+    source: string;
+    guest_card_inquiries: number;
+    showings: number;
+    applications: number;
+    approved_applications: number;
+    converted_tenants: number;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Receivables Activity Report Types ---
+export type ReceivablesActivityArgs = {
+  tenant_visibility?: "active" | "inactive" | "all"; // Defaults to "active"
+  tenant_statuses?: string[]; // e.g., ["0", "4"]
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  receipt_date_from: string; // Required (YYYY-MM-DD)
+  receipt_date_to: string; // Required (YYYY-MM-DD)
+  manually_entered_only?: "0" | "1"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type ReceivablesActivityResult = {
+  results: Array<{
+    property: string;
+    property_name: string;
+    property_id: number;
+    property_address: string;
+    property_street: string;
+    property_street2: string | null;
+    property_city: string;
+    property_state: string;
+    property_zip: string;
+    party: string;
+    status: string;
+    txn_amount: string;
+    txn_remarks: string | null;
+    txn_reference: string | null;
+    txn_receipt_date: string;
+    portal_activated: string;
+    last_online_receipt_date: string | null;
+    online_payments_recurring_count: number;
+    online_payments_recurring_total: string;
+    move_in: string;
+    emails: string | null;
+    phone_numbers: string | null;
+    certified_funds_only: string;
+    opted_out_of_portal: string;
+    payment_type: string;
+    must_pay_balance_in_full: string;
+    property_list: string;
+    txn_id: number;
+    occupancy_id: number;
+    selected_tenant_id: number;
+    unit_id: number;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Renewal Summary Report Types ---
+export type RenewalStatus = "all" | "awaiting_response" | "countersigned" | "pending" | "skipped" | "notice_to_vacate";
+
+export type RenewalSummaryArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  start_on_from: string; // Required (YYYY-MM)
+  start_on_to: string; // Required (YYYY-MM)
+  statuses?: RenewalStatus[]; // Defaults to ["all"]
+  include_tenant_transfers?: "0" | "1"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type RenewalSummaryResult = {
+  results: Array<{
+    unit_name: string;
+    property: string;
+    property_name: string;
+    property_id: number;
+    property_address: string;
+    property_street: string;
+    property_street2: string | null;
+    property_city: string;
+    property_state: string;
+    property_zip: string;
+    unit_type: string;
+    unit_id: number;
+    occupancy_id: number;
+    tenant_name: string;
+    lease_start: string | null;
+    lease_end: string | null;
+    previous_lease_start: string | null;
+    previous_lease_end: string | null;
+    previous_rent: string | null;
+    rent: string | null;
+    respond_by_date: string | null;
+    renewal_sent_date: string | null;
+    countersigned_date: string | null;
+    automatic_renewal_date: string | null;
+    percent_difference: string | null;
+    dollar_difference: string | null;
+    status: string;
+    term: string | null;
+    lease_start_month: string | null;
+    tenant_id: number;
+    tenant_tags: string | null;
+    tenant_agent: string | null;
+    lease_uuid: string | null;
+    lease_document_uuid: string | null;
+    notice_given_date: string | null;
+    move_out: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Rental Applications Report Types ---
+export type RentalApplicationsFilterDateRangeBy = "Rental Application Received Date" | "Rental Application Decision Date";
+
+export type RentalApplicationsArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  unit_ids?: string[];
+  property?: { property_id: string }; // Filter by a single property ID
+  rental_application_statuses?: string[]; // e.g., ["New", "Decision Pending"]
+  rental_applications_filter_date_range_by?: RentalApplicationsFilterDateRangeBy; // Defaults to "Rental Application Received Date"
+  received_on_from: string; // Required (YYYY-MM-DD)
+  received_on_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type RentalApplicationsResult = {
+  results: Array<{
+    applicants: string | null;
+    received: string | null;
+    desired_move_in: string | null;
+    lead_source: string | null;
+    status: string | null;
+    screening: string | null;
+    assigned_user_id: number | null;
+    created_by: string | null;
+    reason_for_status: string | null;
+    unit_title: string | null;
+    unit_type: string | null;
+    property_name: string | null;
+    unit_name: string | null;
+    campaign_title: string | null;
+    applying_for: string | null;
+    assigned_user: string | null;
+    applicant_reported_source: string | null;
+    screened_on: string | null;
+    approved_at: string | null;
+    denied_at: string | null;
+    canceled_at: string | null;
+    decision_made_at: string | null;
+    time_to_conversion: string | null;
+    application_fee_paid: string | null;
+    admin_fee_paid: string | null;
+    rental_application_id: number;
+    rental_application_group_id: number;
+    move_in_date: string | null;
+    lease_start_date: string | null;
+    lease_end_date: string | null;
+    inquiry_id: number | null;
+    application_status: string | null;
+    email: string | null;
+    phone_number: string | null;
+    current_address1: string | null;
+    current_address2: string | null;
+    current_city: string | null;
+    current_state: string | null;
+    current_zip: string | null;
+    current_monthly_rent: string | null;
+    resided_from: string | null;
+    resided_to: string | null;
+    landlord_name: string | null;
+    landlord_phone_number: string | null;
+    landlord_email: string | null;
+    previous1_address1: string | null;
+    previous1_address2: string | null;
+    previous_city1: string | null;
+    previous_state1: string | null;
+    previous_zip1: string | null;
+    previous_monthly_rent1: string | null;
+    previous_resided_from1: string | null;
+    previous_resided_to1: string | null;
+    previous_landlord_name1: string | null;
+    previous_landlord_phone_number1: string | null;
+    previous_landlord_email1: string | null;
+    previous2_address1: string | null;
+    previous2_address2: string | null;
+    previous_city2: string | null;
+    previous_state2: string | null;
+    previous_zip2: string | null;
+    previous_monthly_rent2: string | null;
+    previous_resided_from2: string | null;
+    previous_resided_to2: string | null;
+    previous_landlord_name2: string | null;
+    previous_landlord_phone_number2: string | null;
+    previous_landlord_email2: string | null;
+    employer_name: string | null;
+    employer_phone_number: string | null;
+    monthly_salary: string | null;
+    position_held: string | null;
+    years_worked: number | null;
+    additional_incomes: string | null;
+    pets_names: string | null;
+    pets_kinds: string | null;
+    pets_weights: string | null;
+    unit_address: string | null;
+    unit_street: string | null;
+    unit_street2: string | null;
+    unit_city: string | null;
+    unit_state: string | null;
+    unit_zip: string | null;
+    unit_id: number | null;
+    property_id: number | null;
+    tenant_id: number | null;
+    rental_application_integration_id: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Resident Financial Activity Report Types ---
+export type ResidentFinancialActivityArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  tenant_statuses?: string[]; // e.g., ["0", "4"]
+  occurred_on_from: string; // Required (YYYY-MM-DD)
+  occurred_on_to: string; // Required (YYYY-MM-DD)
+  gl_account_map_id?: string;
+  columns?: string[];
+};
+
+export type ResidentFinancialActivityResult = {
+  results: Array<{
+    account: string | null;
+    account_name: string | null;
+    account_number: string | null;
+    unit_address: string | null;
+    unit_street: string | null;
+    unit_street2: string | null;
+    unit_city: string | null;
+    unit_state: string | null;
+    unit_zip: string | null;
+    last_receipt_date: string | null;
+    occupancy_name: string | null;
+    unit_name: string | null;
+    property_name: string | null;
+    payer: string | null;
+    sum_start_date: string | null;
+    sum_charges: string | null;
+    sum_payments: string | null;
+    sum_end_date: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Screening Assessment Report Types ---
+export type ScreeningAssessmentArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  screen_ran_at_from: string; // Required (YYYY-MM-DD)
+  screen_ran_at_to: string; // Required (YYYY-MM-DD)
+  only_show_overridden_assessments?: "0" | "1"; // Optional, '1' to show only overridden
+  columns?: string[];
+};
+
+export type ScreeningAssessmentResult = {
+  results: Array<{
+    applicant_name: string | null;
+    calculated_assessment: string | null;
+    screening_timestamp: string | null;
+    final_assessment: string | null;
+    override_reasons: string | null;
+    override_comment: string | null;
+    override_timestamp: string | null;
+    override_user: string | null;
+    rental_application_id: number | null;
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Security Deposit Funds Detail Report Types ---
+export type SecurityDepositFundsDetailArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  parties_ids?: {
+    occupancies_ids?: string[];
+  };
+  tenant_statuses?: string[]; // e.g., ["0", "4"]
+  gl_account_ids?: string[];
+  occurred_on_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type SecurityDepositFundsDetailResult = {
+  results: Array<{
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+    unit: string | null;
+    tenant_name: string | null;
+    tenant_status: string | null;
+    move_in: string | null;
+    move_out: string | null;
+    amount: string | null;
+    unit_id: number | null;
+    occupancy_id: number | null;
+    sdr_echeck_eligibility: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Tenant Directory Report Types ---
+export type TenantDirectoryArgs = {
+  tenant_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  tenant_statuses?: string[]; // e.g., ["0", "4"]
+  tenant_types?: ("all" | "tenant" | "cosigner" | "former_tenant")[]; // Defaults to ["all"]
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  columns?: string[];
+};
+
+export type TenantDirectoryResult = {
+  results: Array<{
+    tenant_address: string | null;
+    tenant_street: string | null;
+    tenant_street2: string | null;
+    tenant_city: string | null;
+    tenant_state: string | null;
+    tenant_zip: string | null;
+    tenant_birthdate: string | null;
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+    unit: string | null;
+    tenant: string | null;
+    status: string | null;
+    tenant_type: string | null;
+    phone_numbers: string | null;
+    emails: string | null;
+    move_in: string | null;
+    lease_to: string | null;
+    rent: string | null;
+    deposit: string | null;
+    tenant_tags: string | null;
+    tenant_agent: string | null;
+    tenant_visibility: string | null;
+    certified_funds_only: string | null;
+    lease_from: string | null;
+    last_lease_renewal: string | null;
+    move_out: string | null;
+    next_rent_increase: string | null;
+    last_rent_increase: string | null;
+    next_rent_adjustment: string | null;
+    sdr_echeck_eligibility: string | null;
+    tenant_portal_activated: string | null;
+    online_payments_recurring_total: string | null;
+    online_payments_recurring_count: number | null;
+    tenant_portal_login: string | null;
+    tenant_notes: string | null;
+    send_rent_reminders: string | null;
+    unit_tags: string | null;
+    unit_type: string | null;
+    late_fee_type: string | null;
+    late_fee_base_amount: string | null;
+    late_fee_daily_amount: string | null;
+    rent_grace_days: number | null;
+    rent_grace_day_fixed_day: number | null;
+    late_fee_grace_balance: string | null;
+    max_daily_late_fees_amount: string | null;
+    ignore_partial_payments: string | null;
+    ais_enabled: string | null;
+    insurance_company_name: string | null;
+    insurance_expiration: string | null;
+    insurance_policy_number: string | null;
+    transaction_fee: string | null;
+    primary_tenant: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    company_name: string | null;
+    license_plates: string | null;
+    pets: string | null;
+    auto_nsf_fee_amount: string | null;
+    require_online_payments_in_full: string | null;
+    tenant_sdr_payment: string | null;
+    commercial_lease_type: string | null;
+    occupancy_id: number | null;
+    unit_id: number | null;
+    selected_tenant_id: number | null;
+    guest_card_id: number | null;
+    inquiry_id: number | null;
+    rental_application_id: number | null;
+    portfolio_id: number | null;
+    occupancy_import_uid: string | null;
+    tenant_integration_id: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Tenant Ledger Report Types ---
+export type TenantLedgerArgs = {
+  parties_ids: {
+    occupancies_ids: string[]; // Required
+  };
+  occurred_on_from: string; // Required (YYYY-MM-DD)
+  occurred_on_to: string; // Required (YYYY-MM-DD)
+  transactions_shown?: "tenant" | "owner" | "all"; // Defaults to "tenant"
+  columns?: string[];
+};
+
+export type TenantLedgerResult = {
+  results: Array<{
+    date: string | null;
+    payer: string | null;
+    description: string | null;
+    debit: string | null;
+    credit: string | null;
+    credit_debit_balance: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Trial Balance By Property Report Types ---
+export type TrialBalanceByPropertyArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  posted_on_from: string; // Required (YYYY-MM-DD)
+  posted_on_to: string; // Required (YYYY-MM-DD)
+  gl_account_map_id?: string;
+  columns?: string[];
+};
+
+export type TrialBalanceByPropertyResult = {
+  results: Array<{
+    property_name: string | null;
+    account_name: string | null;
+    balance_forward: string | null;
+    debit: string | null;
+    credit: string | null;
+    ending_balance: string | null;
+    property_id: number | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- 12 Month Cash Flow Report Types ---
+export type Cashflow12MonthArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  posted_on_from: string; // Required (YYYY-MM)
+  posted_on_to: string; // Required (YYYY-MM)
+  gl_account_map_id?: string;
+  level_of_detail?: "detail_view" | "summary_view"; // Defaults to "detail_view"
+  include_zero_balance_gl_accounts?: "1" | "0"; // Defaults to "0"
+  exclude_suppressed_fees?: "1" | "0"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type Cashflow12MonthResult = Array<{
+  account_name: string | null;
+  account_code: string | null;
+  months: Array<{
+    id: string | null;
+    value: string | null;
+  }>;
+  total: string | null;
+}>;
+
+// --- 12 Month Income Statement Report Types ---
+export type IncomeStatement12MonthArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  fund_type?: "all" | "operating" | "escrow"; // Defaults to "all"
+  posted_on_from: string; // Required (YYYY-MM)
+  posted_on_to: string; // Required (YYYY-MM)
+  gl_account_map_id?: string;
+  level_of_detail?: "detail_view" | "summary_view"; // Defaults to "detail_view"
+  include_zero_balance_gl_accounts?: "1" | "0"; // Defaults to "0"
+  columns?: string[];
+};
+
+// Result type is the same structure as 12 Month Cash Flow
+export type IncomeStatement12MonthResult = Cashflow12MonthResult;
+
+// --- Unit Directory Report Types ---
+export type UnitDirectoryArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  tags?: string; // Comma-separated list of tags
+  columns?: string[];
+};
+
+export type UnitDirectoryResult = {
+  results: Array<{
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    unit_address: string | null;
+    unit_street: string | null;
+    unit_street2: string | null;
+    unit_city: string | null;
+    unit_state: string | null;
+    unit_zip: string | null;
+    unit_name: string | null;
+    market_rent: string | null;
+    marketing_title: string | null;
+    marketing_description: string | null;
+    advertised_rent: string | null;
+    posted_to_website: string | null;
+    posted_to_internet: string | null;
+    you_tube_url: string | null;
+    default_deposit: string | null;
+    sqft: number | null;
+    bedrooms: number | null;
+    bathrooms: string | null;
+    unit_tags: string | null;
+    unit_type: string | null;
+    created_on: string | null;
+    rentable: string | null;
+    rubs_enabled: string | null;
+    rubs_enabled_on: string | null;
+    description: string | null;
+    rent_status: string | null;
+    legal_rent: string | null;
+    application_fee: string | null;
+    rent_ready: string | null;
+    unit_id: number | null;
+    computed_market_rent: string | null;
+    ready_for_showing_on: string | null;
+    visibility: string | null;
+    rentable_uid: string | null;
+    portfolio_id: number | null;
+    unit_integration_id: string | null;
+    unit_amenities: string | null;
+    unit_appliances: string | null;
+    unit_utilities: string | null;
+    billed_as: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Unit Inspection Report Types ---
+export type UnitInspectionArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  last_inspection_on_from?: string; // Optional (YYYY-MM-DD)
+  include_blank_inspection_date?: "1" | "0"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type UnitInspectionResult = {
+  results: Array<{
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+    unit_name: string | null;
+    last_inspection_date: string | null;
+    tenant_name: string | null;
+    tenant_primary_phone_number: string | null;
+    move_in_date: string | null;
+    move_out_date: string | null;
+    unit_id: number | null;
+    occupancy_id: number | null;
+    rentable: string | null;
+    unit_tags: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Unit Vacancy Detail Report Types ---
+export type UnitVacancyDetailArgs = {
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  tags?: string; // Comma-separated list of tags
+  columns?: string[];
+};
+
+export type UnitVacancyDetailResult = {
+  results: Array<{
+    advertised_rent: string | null;
+    posted_to_website: string | null;
+    posted_to_internet: string | null;
+    property: string | null;
+    property_name: string | null;
+    amenities: string | null;
+    lockbox_enabled: string | null;
+    affordable_program: string | null;
+    address: string | null;
+    street: string | null;
+    street2: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+    unit: string | null;
+    unit_tags: string | null;
+    unit_type: string | null;
+    bed_and_bath: string | null;
+    sqft: number | null;
+    unit_status: string | null;
+    rent_ready: string | null;
+    days_vacant: number | null;
+    last_rent: string | null;
+    schd_rent: string | null;
+    new_rent: string | null;
+    last_move_in: string | null;
+    last_move_out: string | null;
+    available_on: string | null;
+    next_move_in: string | null;
+    description: string | null;
+    amenities_price: string | null;
+    computed_market_rent: string | null;
+    ready_for_showing_on: string | null;
+    unit_turn_target_date: string | null;
+    advertised_rent_months: Array<Record<string, unknown>>; // Array of objects, structure not fully defined
+    property_id: number | null;
+    unit_id: number | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Vendor Directory Report Types ---
+export type VendorDirectoryArgs = {
+  workers_comp_expiration_to?: string; // Optional (YYYY-MM-DD)
+  liability_expiration_to?: string; // Optional (YYYY-MM-DD)
+  epa_expiration_to?: string; // Optional (YYYY-MM-DD)
+  auto_insurance_expiration_to?: string; // Optional (YYYY-MM-DD)
+  state_license_expiration_to?: string; // Optional (YYYY-MM-DD)
+  contract_expiration_to?: string; // Optional (YYYY-MM-DD)
+  tags?: string; // Comma-separated list of tags
+  vendor_visibility?: "active" | "inactive" | "all"; // Defaults to "active"
+  payment_type?: "eCheck" | "Check" | "all"; // Defaults to "all" if not specified, needs check
+  created_by?: string; // Defaults to "All"
+  vendor_type?: string; // Defaults to "All"
+  columns?: string[];
+};
+
+export type VendorDirectoryResult = {
+  results: Array<{
+    company_name: string | null;
+    name: string | null;
+    address: string | null;
+    street: string | null;
+    street2: string | null;
+    city: string | null;
+    state: string | null;
+    zip: string | null;
+    phone_numbers: string | null;
+    email: string | null;
+    default_gl_account: string | null;
+    payment_type: string | null;
+    send1099: string | null;
+    workers_comp_expires: string | null;
+    liability_ins_expires: string | null;
+    epa_cert_expires: string | null;
+    auto_ins_expires: string | null;
+    state_lic_expires: string | null;
+    contract_expires: string | null;
+    tags: string | null;
+    vendor_id: number | null;
+    vendor_trades: string | null;
+    do_not_use_for_work_order: string | null;
+    terms: string | null;
+    first_name: string | null;
+    last_name: string | null;
+    vendor_integration_id: string | null;
+    created_by: string | null;
+    vendor_type: string | null;
+    portal_activated: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Vendor Ledger Report Types ---
+export type VendorLedgerArgs = {
+  party_contact_info: {
+    company_id: string; // Required Vendor ID
+  };
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  occurred_on_from: string; // Required (YYYY-MM-DD)
+  occurred_on_to: string; // Required (YYYY-MM-DD)
+  reverse_transaction?: "1" | "0"; // Defaults to "0"
+  columns?: string[];
+};
+
+export type VendorLedgerResult = {
+  results: Array<{
+    reference_number: string | null;
+    bill_date: string | null;
+    due_date: string | null;
+    account: string | null;
+    account_name: string | null;
+    account_number: string | null;
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+    unit: string | null;
+    payee_name: string | null;
+    paid: string | null;
+    unpaid: string | null;
+    check_number: string | null;
+    payment_date: string | null;
+    description: string | null;
+    work_order: string | null;
+    cash_account: string | null;
+    txn_id: number | null;
+    payable_invoice_detail_id: number | null;
+    unit_id: number | null;
+    quantity: string | null;
+    rate: string | null;
+    work_order_assignee: string | null;
+    approval_status: string | null;
+    approved_by: string | null;
+    last_approver: string | null;
+    next_approvers: string | null;
+    days_pending_approval: string | null;
+    board_approval_status: string | null;
+    txn_created_at: string | null;
+    txn_updated_at: string | null;
+    created_by: string | null;
+    bank_account: string | null;
+    vendor_account_number: string | null;
+    service_from: string | null;
+    service_to: string | null;
+    other_payment_type: string | null;
+    purchase_order_number: string | null;
+    purchase_order_id: number | null;
+    project: string | null;
+    project_id: number | null;
+    service_request_id: number | null;
+    vendor_id: number | null;
+    cost_center_name: string | null;
+    cost_center_number: string | null;
+    work_order_issue: string | null;
+    work_order_id: number | null;
+    party_id: number | null;
+    party_type: string | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Work Order Report Types ---
+export type WorkOrderArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  unit_ids?: string[];
+  property?: { property_id: string }; // Filter by a single property ID
+  parties_ids?: {
+    occupancies_ids?: string[];
+  };
+  party_contact_info?: {
+    company_id: string; // Vendor ID
+  };
+  assigned_user?: string; // User ID or "All", defaults to "All"
+  created_by?: string; // User ID or "All", defaults to "All"
+  priority?: "All" | "Low" | "Medium" | "High" | "Urgent"; // Defaults to "All"
+  from_inspection?: boolean | null; // Defaults to null/omit
+  current_estimate_approval_status?: "All" | "Pending" | "Approved" | "Declined"; // Defaults to "All"
+  work_order_statuses?: string[]; // List of status IDs
+  work_order_types?: Array<"unit_turn" | "tenant_requested" | "other">; // List of types
+  unit_turn_category?: Array<"all" | string>; // List of categories, defaults to ["all"]
+  status_date_range_from?: string; // YYYY-MM-DD
+  status_date_range_to?: string; // YYYY-MM-DD
+  status_date?: "all" | "created_at" | "completed_on"; // Defaults to "all"
+  columns?: string[];
+};
+
+export type WorkOrderResult = {
+  results: Array<{
+    property: string | null;
+    property_name: string | null;
+    property_id: number | null;
+    property_address: string | null;
+    property_street: string | null;
+    property_street2: string | null;
+    property_city: string | null;
+    property_state: string | null;
+    property_zip: string | null;
+    unit_address: string | null;
+    unit_street: string | null;
+    unit_street2: string | null;
+    unit_city: string | null;
+    unit_state: string | null;
+    unit_zip: string | null;
+    priority: string | null;
+    work_order_type: string | null;
+    service_request_number: string | null;
+    service_request_description: string | null;
+    home_warranty_expiration: string | null;
+    work_order_number: string | null;
+    job_description: string | null;
+    instructions: string | null;
+    status: string | null;
+    vendor_id: number | null;
+    vendor: string | null;
+    unit_id: number | null;
+    unit_name: string | null;
+    occupancy_id: number | null;
+    primary_tenant: string | null;
+    primary_tenant_email: string | null;
+    primary_tenant_phone_number: string | null;
+    created_at: string | null;
+    created_by: string | null;
+    assigned_user: string | null;
+    estimate_req_on: string | null;
+    estimated_on: string | null;
+    estimate_amount: string | null;
+    estimate_approval_status: string | null;
+    estimate_approved_on: string | null;
+    estimate_approval_last_requested_on: string | null;
+    scheduled_start: string | null;
+    scheduled_end: string | null;
+    work_completed_on: string | null;
+    completed_on: string | null;
+    last_billed_on: string | null;
+    canceled_on: string | null;
+    amount: string | null;
+    invoice: string | null;
+    unit_turn_id: string | null;
+    corporate_charge_amount: string | null;
+    corporate_charge_id: number | null;
+    discount_amount: string | null;
+    discount_bill_id: number | null;
+    markup_amount: string | null;
+    markup_bill_id: number | null;
+    tenant_total_charge_amount: string | null;
+    tenant_charge_ids: string | null; // Comma-separated IDs?
+    vendor_bill_amount: string | null;
+    vendor_bill_id: number | null;
+    vendor_charge_amount: string | null;
+    vendor_charge_id: number | null;
+    inspection_id: number | null;
+    inspection_date: string | null;
+    work_order_id: number | null;
+    service_request_id: number | null;
+    recurring: string | null;
+    submitted_by_tenant: string | null;
+    requesting_tenant: string | null;
+    maintenance_limit: string | null;
+    status_notes: string | null;
+    follow_up_on: string | null;
+    vendor_trade: string | null;
+    unit_turn_category: string | null;
+    work_order_issue: string | null;
+    survey_id: number | null;
+    vendor_portal_invoices: number | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Work Order Labor Summary Report Types ---
+export type WorkOrderLaborSummaryArgs = {
+  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  maintenance_tech?: string; // User ID or "All", defaults to "All"
+  work_order_statuses?: string[]; // List of status IDs
+  unit_turn?: "1" | "0"; // Defaults to "0" (false)
+  labor_performed_from: string; // Required (YYYY-MM-DD)
+  labor_performed_to: string; // Required (YYYY-MM-DD)
+  columns?: string[];
+};
+
+export type WorkOrderLaborSummaryResult = {
+  results: Array<{
+    work_order_number: string | null;
+    date: string | null;
+    maintenance_tech: string | null;
+    property_name: string | null;
+    unit_name: string | null;
+    start_time: string | null;
+    end_time: string | null;
+    worked_hours: string | null;
+    hours: string | null;
+    marked_after_hours: string | null;
+    hours_difference: string | null;
+    work_order_status: string | null;
+    description: string | null;
+    last_edited_by: string | null;
+    unit_turn_id: string | null;
+    timer_start: string | null;
+    timer_stop: string | null;
+    gl_account: string | null;
+    last_bill_created_at: string | null;
+    work_order_issue: string | null;
+    property_id: number | null;
+    unit_id: number | null;
+    work_order_id: number | null;
+    service_request_id: number | null;
+    labor_detail_id: number | null;
+  }>;
+  next_page_url: string | null;
+};
+
+// --- Owner Directory Report Types ---
+export type OwnerDirectoryReportPropertiesArgs = {
+  properties_ids?: string[];
+  property_groups_ids?: string[];
+  portfolios_ids?: string[];
+  owners_ids?: string[];
+};
+
+export type OwnerDirectoryReportArgs = {
+  property_visibility?: string; // e.g., "active"
+  properties?: OwnerDirectoryReportPropertiesArgs;
+  tags?: string; // Comma-separated e.g., "bbq,deck"
+  owner_visibility?: string; // e.g., "active"
+  created_by?: string; // e.g., "All"
+  columns?: string[]; // List of columns to include
+};
+
+export type OwnerDirectoryReportResultItem = {
+  name: string;
+  phone_numbers: string;
+  email: string;
+  alternative_payee: string;
+  payment_type: string;
+  last_payment_date: string;
+  hold_payments: string;
+  owner_packet_reports: string;
+  send_owner_packets_by_email: string;
+  properties_owned: string;
+  tags: string;
+  last_packet_sent: string;
+  address: string;
+  street: string;
+  street2: string;
+  city: string;
+  state: string;
+  zip: string;
+  country: string;
+  owner_id: number;
+  properties_owned_i_ds: string;
+  notes_for_the_owner: string;
+  first_name: string;
+  last_name: string;
+  owner_integration_id: string;
+  created_by: string;
+};
+
+export type OwnerDirectoryReportOutput = {
+  results: OwnerDirectoryReportResultItem[];
+  next_page_url: string | null;
+};
+
+// --- Work Order Labor Summary Report Function ---
+async function getWorkOrderLaborSummaryReport(args: WorkOrderLaborSummaryArgs): Promise<WorkOrderLaborSummaryResult> {
+  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+  if (!args.labor_performed_from || !args.labor_performed_to) {
+    throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
+  }
+
+  const {
+    property_visibility = "active",
+    maintenance_tech = "All",
+    unit_turn = "0", // Default to not filter by unit turn unless specified
+    ...rest
+  } = args;
+
+  const payload = {
+    property_visibility,
+    maintenance_tech,
+    unit_turn,
+    ...rest
+  };
+
+  const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
+  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
+    auth: { username: USERNAME, password: PASSWORD },
+    headers: { 'Content-Type': 'application/json' },
+  }));
+
+  return response.data;
+}
+
+// --- Owner Directory Report Function ---
+async function getOwnerDirectoryReport(args: OwnerDirectoryReportArgs): Promise<OwnerDirectoryReportOutput> {
+  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+
+  const {
+    property_visibility = "active",
+    owner_visibility = "active",
+    created_by = "All",
+    ...rest
+  } = args;
+
+  const payload = {
+    property_visibility,
+    owner_visibility,
+    created_by,
+    ...rest
+  };
+
+  const url = `https://${VHOST}.appfolio.com/api/v2/reports/owner_directory.json`;
+  
+  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
+    auth: { username: USERNAME, password: PASSWORD },
+    headers: { 'Content-Type': 'application/json' },
+  }));
+
+  return response.data;
+}
+
 async function getAgedPayablesSummaryReport(args: AgedPayablesSummaryArgs): Promise<AgedPayablesSummaryResult> { 
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   // Set default for property_visibility if not provided
@@ -910,7 +2254,7 @@ async function getDelinquencyAsOfReport(args: DelinquencyAsOfArgs): Promise<Deli
     property_visibility,
     tenant_statuses,
     amount_owed_in_account,
-    ...rest,
+    ...rest
   };
 
   const url = `https://${VHOST}.appfolio.com/api/v2/reports/delinquency_as_of.json`;
@@ -1238,38 +2582,6 @@ async function getLeaseExpirationDetailByMonthReport(args: LeaseExpirationDetail
   return response.data;
 }
 
-// --- Leasing Summary Report Types ---
-export type LeasingSummaryArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  posted_on_from: string; // Required (YYYY-MM-DD)
-  posted_on_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type LeasingSummaryResult = {
-  results: Array<{
-    unit_type: string;
-    number_of_units: number;
-    number_of_model_units: number;
-    inquiries_received: number;
-    showings_completed: number;
-    applications_received: number;
-    move_ins: number;
-    move_outs: number;
-    leased: number;
-    vacancy_postings: number;
-    number_of_active_campaigns: number;
-    number_of_ended_campaigns: number;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Leasing Summary Report Function ---
 async function getLeasingSummaryReport(args: LeasingSummaryArgs): Promise<LeasingSummaryResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1292,47 +2604,6 @@ async function getLeasingSummaryReport(args: LeasingSummaryArgs): Promise<Leasin
 
   return response.data;
 }
-
-// --- Loans Report Types ---
-export type LoansArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  reference_to: string; // Required (YYYY-MM-DD)
-  show_hidden_loans?: "0" | "1"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type LoansResult = {
-  results: Array<{
-    property: string;
-    property_name: string;
-    property_id: number;
-    property_address: string;
-    property_street: string;
-    property_street2: string | null;
-    property_city: string;
-    property_state: string;
-    property_zip: string;
-    loan_id: number;
-    loan_number: string;
-    vendor: string;
-    monthly_payment: string | null;
-    maturity_date: string | null;
-    ending_balance: string;
-    interest_rate: string | null;
-    next_interest_rate: string | null;
-    next_interest_rate_date: string | null;
-    escrow: string | null;
-    prepayment_penalty: string | null;
-    balloon_amount: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Loans Report Function ---
 async function getLoansReport(args: LoansArgs): Promise<LoansResult> {
@@ -1358,38 +2629,6 @@ async function getLoansReport(args: LoansArgs): Promise<LoansResult> {
   return response.data;
 }
 
-// --- Occupancy Summary Report Types ---
-export type OccupancySummaryArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  as_of_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type OccupancySummaryResult = {
-  results: Array<{
-    unit_type: string;
-    number_of_units: number;
-    occupied: number;
-    percent_occupied: string;
-    average_square_feet: number;
-    average_market_rent: string | null;
-    vacant_rented: number;
-    vacant_unrented: number;
-    notice_rented: number;
-    notice_unrented: number;
-    average_rent: string | null;
-    property: string;
-    property_id: number;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Occupancy Summary Report Function ---
 async function getOccupancySummaryReport(args: OccupancySummaryArgs): Promise<OccupancySummaryResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1412,40 +2651,6 @@ async function getOccupancySummaryReport(args: OccupancySummaryArgs): Promise<Oc
 
   return response.data;
 }
-
-// --- Owner Leasing Report Types ---
-export type OwnerLeasingArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  received_on_from: string; // Required (YYYY-MM-DD)
-  received_on_to: string; // Required (YYYY-MM-DD)
-  include_units_which_are_not_rent_ready?: "0" | "1"; // Defaults to "0"
-  include_units_which_are_hidden_from_the_vacancies_dashboard?: "0" | "1"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type OwnerLeasingResult = {
-  results: Array<{
-    property: string;
-    unit: string;
-    applied_to: string | null;
-    unit_type: string;
-    market_rent: string | null;
-    inquiries: number;
-    showings: number;
-    applications: number;
-    approved_applications: number;
-    converted_tenants: number;
-    property_id: string;
-    unit_id: number;
-    computed_market_rent: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Owner Leasing Report Function ---
 async function getOwnerLeasingReport(args: OwnerLeasingArgs): Promise<OwnerLeasingResult> {
@@ -1475,45 +2680,6 @@ async function getOwnerLeasingReport(args: OwnerLeasingArgs): Promise<OwnerLeasi
   return response.data;
 }
 
-// --- Property Performance Report Types ---
-export type PropertyPerformanceArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  gl_account_ids?: string[];
-  posted_on_from: string; // Required (YYYY-MM-DD)
-  posted_on_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type PropertyPerformanceResult = {
-  results: Array<{
-    property: string;
-    property_name: string;
-    property_id: number;
-    property_address: string;
-    property_street: string;
-    property_street2: string | null;
-    property_city: string;
-    property_state: string;
-    property_zip: string;
-    units: number;
-    gl_accounts: Array<{
-      id: number;
-      value: string;
-    }>;
-    commission_percent: string | null;
-    site_manager: string | null;
-    property_group_id: string | null;
-    portfolio_id: number | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Property Performance Report Function ---
 async function getPropertyPerformanceReport(args: PropertyPerformanceArgs): Promise<PropertyPerformanceResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1537,32 +2703,6 @@ async function getPropertyPerformanceReport(args: PropertyPerformanceArgs): Prom
   return response.data;
 }
 
-// --- Property Source Tracking Report Types ---
-export type PropertySourceTrackingArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  received_on_from: string; // Required (YYYY-MM-DD)
-  received_on_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type PropertySourceTrackingResult = {
-  results: Array<{
-    source: string;
-    guest_card_inquiries: number;
-    showings: number;
-    applications: number;
-    approved_applications: number;
-    converted_tenants: number;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Property Source Tracking Report Function ---
 async function getPropertySourceTrackingReport(args: PropertySourceTrackingArgs): Promise<PropertySourceTrackingResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1585,60 +2725,6 @@ async function getPropertySourceTrackingReport(args: PropertySourceTrackingArgs)
 
   return response.data;
 }
-
-// --- Receivables Activity Report Types ---
-export type ReceivablesActivityArgs = {
-  tenant_visibility?: "active" | "inactive" | "all"; // Defaults to "active"
-  tenant_statuses?: string[]; // e.g., ["0", "4"]
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  receipt_date_from: string; // Required (YYYY-MM-DD)
-  receipt_date_to: string; // Required (YYYY-MM-DD)
-  manually_entered_only?: "0" | "1"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type ReceivablesActivityResult = {
-  results: Array<{
-    property: string;
-    property_name: string;
-    property_id: number;
-    property_address: string;
-    property_street: string;
-    property_street2: string | null;
-    property_city: string;
-    property_state: string;
-    property_zip: string;
-    party: string;
-    status: string;
-    txn_amount: string;
-    txn_remarks: string | null;
-    txn_reference: string | null;
-    txn_receipt_date: string;
-    portal_activated: string;
-    last_online_receipt_date: string | null;
-    online_payments_recurring_count: number;
-    online_payments_recurring_total: string;
-    move_in: string;
-    emails: string | null;
-    phone_numbers: string | null;
-    certified_funds_only: string;
-    opted_out_of_portal: string;
-    payment_type: string;
-    must_pay_balance_in_full: string;
-    property_list: string;
-    txn_id: number;
-    occupancy_id: number;
-    selected_tenant_id: number;
-    unit_id: number;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Receivables Activity Report Function ---
 async function getReceivablesActivityReport(args: ReceivablesActivityArgs): Promise<ReceivablesActivityResult> {
@@ -1670,66 +2756,6 @@ async function getReceivablesActivityReport(args: ReceivablesActivityArgs): Prom
   return response.data;
 }
 
-// --- Renewal Summary Report Types ---
-export type RenewalStatus = "all" | "awaiting_response" | "countersigned" | "pending" | "skipped" | "notice_to_vacate";
-
-export type RenewalSummaryArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  start_on_from: string; // Required (YYYY-MM)
-  start_on_to: string; // Required (YYYY-MM)
-  statuses?: RenewalStatus[]; // Defaults to ["all"]
-  include_tenant_transfers?: "0" | "1"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type RenewalSummaryResult = {
-  results: Array<{
-    unit_name: string;
-    property: string;
-    property_name: string;
-    property_id: number;
-    property_address: string;
-    property_street: string;
-    property_street2: string | null;
-    property_city: string;
-    property_state: string;
-    property_zip: string;
-    unit_type: string;
-    unit_id: number;
-    occupancy_id: number;
-    tenant_name: string;
-    lease_start: string | null;
-    lease_end: string | null;
-    previous_lease_start: string | null;
-    previous_lease_end: string | null;
-    previous_rent: string | null;
-    rent: string | null;
-    respond_by_date: string | null;
-    renewal_sent_date: string | null;
-    countersigned_date: string | null;
-    automatic_renewal_date: string | null;
-    percent_difference: string | null;
-    dollar_difference: string | null;
-    status: string;
-    term: string | null;
-    lease_start_month: string | null;
-    tenant_id: number;
-    tenant_tags: string | null;
-    tenant_agent: string | null;
-    lease_uuid: string | null;
-    lease_document_uuid: string | null;
-    notice_given_date: string | null;
-    move_out: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Renewal Summary Report Function ---
 async function getRenewalSummaryReport(args: RenewalSummaryArgs): Promise<RenewalSummaryResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1760,112 +2786,6 @@ async function getRenewalSummaryReport(args: RenewalSummaryArgs): Promise<Renewa
   return response.data;
 }
 
-// --- Rental Applications Report Types ---
-export type RentalApplicationsFilterDateRangeBy = "Rental Application Received Date" | "Rental Application Decision Date";
-
-export type RentalApplicationsArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  unit_ids?: string[];
-  property?: { property_id: string }; // Filter by a single property ID
-  rental_application_statuses?: string[]; // e.g., ["New", "Decision Pending"]
-  rental_applications_filter_date_range_by?: RentalApplicationsFilterDateRangeBy; // Defaults to "Rental Application Received Date"
-  received_on_from: string; // Required (YYYY-MM-DD)
-  received_on_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type RentalApplicationsResult = {
-  results: Array<{
-    applicants: string | null;
-    received: string | null;
-    desired_move_in: string | null;
-    lead_source: string | null;
-    status: string | null;
-    screening: string | null;
-    assigned_user_id: number | null;
-    created_by: string | null;
-    reason_for_status: string | null;
-    unit_title: string | null;
-    unit_type: string | null;
-    property_name: string | null;
-    unit_name: string | null;
-    campaign_title: string | null;
-    applying_for: string | null;
-    assigned_user: string | null;
-    applicant_reported_source: string | null;
-    screened_on: string | null;
-    approved_at: string | null;
-    denied_at: string | null;
-    canceled_at: string | null;
-    decision_made_at: string | null;
-    time_to_conversion: string | null;
-    application_fee_paid: string | null;
-    admin_fee_paid: string | null;
-    rental_application_id: number;
-    rental_application_group_id: number;
-    move_in_date: string | null;
-    lease_start_date: string | null;
-    lease_end_date: string | null;
-    inquiry_id: number | null;
-    application_status: string | null;
-    email: string | null;
-    phone_number: string | null;
-    current_address1: string | null;
-    current_address2: string | null;
-    current_city: string | null;
-    current_state: string | null;
-    current_zip: string | null;
-    current_monthly_rent: string | null;
-    resided_from: string | null;
-    resided_to: string | null;
-    landlord_name: string | null;
-    landlord_phone_number: string | null;
-    landlord_email: string | null;
-    previous1_address1: string | null;
-    previous1_address2: string | null;
-    previous_city1: string | null;
-    previous_state1: string | null;
-    previous_zip1: string | null;
-    previous_monthly_rent1: string | null;
-    previous_resided_from1: string | null;
-    previous_resided_to1: string | null;
-    previous_landlord_name1: string | null;
-    previous_landlord_phone_number1: string | null;
-    previous_landlord_email1: string | null;
-    previous2_address1: string | null;
-    previous2_address2: string | null;
-    previous_city2: string | null;
-    previous_state2: string | null;
-    previous_zip2: string | null;
-    previous_monthly_rent2: string | null;
-    previous_resided_from2: string | null;
-    previous_resided_to2: string | null;
-    previous_landlord_name2: string | null;
-    previous_landlord_phone_number2: string | null;
-    previous_landlord_email2: string | null;
-    employer_name: string | null;
-    employer_phone_number: string | null;
-    monthly_salary: string | null;
-    position_held: string | null;
-    years_worked: number | null;
-    additional_incomes: string | null;
-    pets_names: string | null;
-    pets_kinds: string | null;
-    pets_weights: string | null;
-    unit_address: string | null;
-    unit_street: string | null;
-    unit_street2: string | null;
-    unit_city: string | null;
-    unit_state: string | null;
-    unit_zip: string | null;
-    unit_id: number | null;
-    property_id: number | null;
-    tenant_id: number | null;
-    rental_application_integration_id: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Rental Applications Report Function ---
 async function getRentalApplicationsReport(args: RentalApplicationsArgs): Promise<RentalApplicationsResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1894,46 +2814,6 @@ async function getRentalApplicationsReport(args: RentalApplicationsArgs): Promis
   return response.data;
 }
 
-// --- Resident Financial Activity Report Types ---
-export type ResidentFinancialActivityArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  tenant_statuses?: string[]; // e.g., ["0", "4"]
-  occurred_on_from: string; // Required (YYYY-MM-DD)
-  occurred_on_to: string; // Required (YYYY-MM-DD)
-  gl_account_map_id?: string;
-  columns?: string[];
-};
-
-export type ResidentFinancialActivityResult = {
-  results: Array<{
-    account: string | null;
-    account_name: string | null;
-    account_number: string | null;
-    unit_address: string | null;
-    unit_street: string | null;
-    unit_street2: string | null;
-    unit_city: string | null;
-    unit_state: string | null;
-    unit_zip: string | null;
-    last_receipt_date: string | null;
-    occupancy_name: string | null;
-    unit_name: string | null;
-    property_name: string | null;
-    payer: string | null;
-    sum_start_date: string | null;
-    sum_charges: string | null;
-    sum_payments: string | null;
-    sum_end_date: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Resident Financial Activity Report Function ---
 async function getResidentFinancialActivityReport(args: ResidentFinancialActivityArgs): Promise<ResidentFinancialActivityResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -1952,45 +2832,6 @@ async function getResidentFinancialActivityReport(args: ResidentFinancialActivit
 
   return response.data;
 }
-
-// --- Screening Assessment Report Types ---
-export type ScreeningAssessmentArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  screen_ran_at_from: string; // Required (YYYY-MM-DD)
-  screen_ran_at_to: string; // Required (YYYY-MM-DD)
-  only_show_overridden_assessments?: "0" | "1"; // Optional, '1' to show only overridden
-  columns?: string[];
-};
-
-export type ScreeningAssessmentResult = {
-  results: Array<{
-    applicant_name: string | null;
-    calculated_assessment: string | null;
-    screening_timestamp: string | null;
-    final_assessment: string | null;
-    override_reasons: string | null;
-    override_comment: string | null;
-    override_timestamp: string | null;
-    override_user: string | null;
-    rental_application_id: number | null;
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Screening Assessment Report Function ---
 async function getScreeningAssessmentReport(args: ScreeningAssessmentArgs): Promise<ScreeningAssessmentResult> {
@@ -2011,48 +2852,6 @@ async function getScreeningAssessmentReport(args: ScreeningAssessmentArgs): Prom
   return response.data;
 }
 
-// --- Security Deposit Funds Detail Report Types ---
-export type SecurityDepositFundsDetailArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  parties_ids?: {
-    occupancies_ids?: string[];
-  };
-  tenant_statuses?: string[]; // e.g., ["0", "4"]
-  gl_account_ids?: string[];
-  occurred_on_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type SecurityDepositFundsDetailResult = {
-  results: Array<{
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-    unit: string | null;
-    tenant_name: string | null;
-    tenant_status: string | null;
-    move_in: string | null;
-    move_out: string | null;
-    amount: string | null;
-    unit_id: number | null;
-    occupancy_id: number | null;
-    sdr_echeck_eligibility: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Security Deposit Funds Detail Report Function ---
 async function getSecurityDepositFundsDetailReport(args: SecurityDepositFundsDetailArgs): Promise<SecurityDepositFundsDetailResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2071,104 +2870,6 @@ async function getSecurityDepositFundsDetailReport(args: SecurityDepositFundsDet
 
   return response.data;
 }
-
-// --- Tenant Directory Report Types ---
-export type TenantDirectoryArgs = {
-  tenant_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  tenant_statuses?: string[]; // e.g., ["0", "4"]
-  tenant_types?: ("all" | "tenant" | "cosigner" | "former_tenant")[]; // Defaults to ["all"]
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  columns?: string[];
-};
-
-export type TenantDirectoryResult = {
-  results: Array<{
-    tenant_address: string | null;
-    tenant_street: string | null;
-    tenant_street2: string | null;
-    tenant_city: string | null;
-    tenant_state: string | null;
-    tenant_zip: string | null;
-    tenant_birthdate: string | null;
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-    unit: string | null;
-    tenant: string | null;
-    status: string | null;
-    tenant_type: string | null;
-    phone_numbers: string | null;
-    emails: string | null;
-    move_in: string | null;
-    lease_to: string | null;
-    rent: string | null;
-    deposit: string | null;
-    tenant_tags: string | null;
-    tenant_agent: string | null;
-    tenant_visibility: string | null;
-    certified_funds_only: string | null;
-    lease_from: string | null;
-    last_lease_renewal: string | null;
-    move_out: string | null;
-    next_rent_increase: string | null;
-    last_rent_increase: string | null;
-    next_rent_adjustment: string | null;
-    sdr_echeck_eligibility: string | null;
-    tenant_portal_activated: string | null;
-    online_payments_recurring_total: string | null;
-    online_payments_recurring_count: number | null;
-    tenant_portal_login: string | null;
-    tenant_notes: string | null;
-    send_rent_reminders: string | null;
-    unit_tags: string | null;
-    unit_type: string | null;
-    late_fee_type: string | null;
-    late_fee_base_amount: string | null;
-    late_fee_daily_amount: string | null;
-    rent_grace_days: number | null;
-    rent_grace_day_fixed_day: number | null;
-    late_fee_grace_balance: string | null;
-    max_daily_late_fees_amount: string | null;
-    ignore_partial_payments: string | null;
-    ais_enabled: string | null;
-    insurance_company_name: string | null;
-    insurance_expiration: string | null;
-    insurance_policy_number: string | null;
-    transaction_fee: string | null;
-    primary_tenant: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    company_name: string | null;
-    license_plates: string | null;
-    pets: string | null;
-    auto_nsf_fee_amount: string | null;
-    require_online_payments_in_full: string | null;
-    tenant_sdr_payment: string | null;
-    commercial_lease_type: string | null;
-    occupancy_id: number | null;
-    unit_id: number | null;
-    selected_tenant_id: number | null;
-    guest_card_id: number | null;
-    inquiry_id: number | null;
-    rental_application_id: number | null;
-    portfolio_id: number | null;
-    occupancy_import_uid: string | null;
-    tenant_integration_id: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Tenant Directory Report Function ---
 async function getTenantDirectoryReport(args: TenantDirectoryArgs): Promise<TenantDirectoryResult> {
@@ -2197,29 +2898,6 @@ async function getTenantDirectoryReport(args: TenantDirectoryArgs): Promise<Tena
   return response.data;
 }
 
-// --- Tenant Ledger Report Types ---
-export type TenantLedgerArgs = {
-  parties_ids: {
-    occupancies_ids: string[]; // Required
-  };
-  occurred_on_from: string; // Required (YYYY-MM-DD)
-  occurred_on_to: string; // Required (YYYY-MM-DD)
-  transactions_shown?: "tenant" | "owner" | "all"; // Defaults to "tenant"
-  columns?: string[];
-};
-
-export type TenantLedgerResult = {
-  results: Array<{
-    date: string | null;
-    payer: string | null;
-    description: string | null;
-    debit: string | null;
-    credit: string | null;
-    credit_debit_balance: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Tenant Ledger Report Function ---
 async function getTenantLedgerReport(args: TenantLedgerArgs): Promise<TenantLedgerResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2242,34 +2920,6 @@ async function getTenantLedgerReport(args: TenantLedgerArgs): Promise<TenantLedg
   return response.data;
 }
 
-// --- Trial Balance By Property Report Types ---
-export type TrialBalanceByPropertyArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  posted_on_from: string; // Required (YYYY-MM-DD)
-  posted_on_to: string; // Required (YYYY-MM-DD)
-  gl_account_map_id?: string;
-  columns?: string[];
-};
-
-export type TrialBalanceByPropertyResult = {
-  results: Array<{
-    property_name: string | null;
-    account_name: string | null;
-    balance_forward: string | null;
-    debit: string | null;
-    credit: string | null;
-    ending_balance: string | null;
-    property_id: number | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Trial Balance By Property Report Function ---
 async function getTrialBalanceByPropertyReport(args: TrialBalanceByPropertyArgs): Promise<TrialBalanceByPropertyResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2288,34 +2938,6 @@ async function getTrialBalanceByPropertyReport(args: TrialBalanceByPropertyArgs)
 
   return response.data;
 }
-
-// --- 12 Month Cash Flow Report Types ---
-export type Cashflow12MonthArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  posted_on_from: string; // Required (YYYY-MM)
-  posted_on_to: string; // Required (YYYY-MM)
-  gl_account_map_id?: string;
-  level_of_detail?: "detail_view" | "summary_view"; // Defaults to "detail_view"
-  include_zero_balance_gl_accounts?: "1" | "0"; // Defaults to "0"
-  exclude_suppressed_fees?: "1" | "0"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type Cashflow12MonthResult = Array<{
-  account_name: string | null;
-  account_code: string | null;
-  months: Array<{
-    id: string | null;
-    value: string | null;
-  }>;
-  total: string | null;
-}>;
 
 // --- 12 Month Cash Flow Report Function ---
 async function getCashflow12MonthReport(args: Cashflow12MonthArgs): Promise<Cashflow12MonthResult> {
@@ -2349,27 +2971,6 @@ async function getCashflow12MonthReport(args: Cashflow12MonthArgs): Promise<Cash
   return response.data;
 }
 
-// --- 12 Month Income Statement Report Types ---
-export type IncomeStatement12MonthArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  fund_type?: "all" | "operating" | "escrow"; // Defaults to "all"
-  posted_on_from: string; // Required (YYYY-MM)
-  posted_on_to: string; // Required (YYYY-MM)
-  gl_account_map_id?: string;
-  level_of_detail?: "detail_view" | "summary_view"; // Defaults to "detail_view"
-  include_zero_balance_gl_accounts?: "1" | "0"; // Defaults to "0"
-  columns?: string[];
-};
-
-// Result type is the same structure as 12 Month Cash Flow
-export type IncomeStatement12MonthResult = Cashflow12MonthResult;
-
 // --- 12 Month Income Statement Report Function ---
 async function getIncomeStatement12MonthReport(args: IncomeStatement12MonthArgs): Promise<IncomeStatement12MonthResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2402,68 +3003,6 @@ async function getIncomeStatement12MonthReport(args: IncomeStatement12MonthArgs)
   return response.data;
 }
 
-// --- Unit Directory Report Types ---
-export type UnitDirectoryArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  tags?: string; // Comma-separated list of tags
-  columns?: string[];
-};
-
-export type UnitDirectoryResult = {
-  results: Array<{
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    unit_address: string | null;
-    unit_street: string | null;
-    unit_street2: string | null;
-    unit_city: string | null;
-    unit_state: string | null;
-    unit_zip: string | null;
-    unit_name: string | null;
-    market_rent: string | null;
-    marketing_title: string | null;
-    marketing_description: string | null;
-    advertised_rent: string | null;
-    posted_to_website: string | null;
-    posted_to_internet: string | null;
-    you_tube_url: string | null;
-    default_deposit: string | null;
-    sqft: number | null;
-    bedrooms: number | null;
-    bathrooms: string | null;
-    unit_tags: string | null;
-    unit_type: string | null;
-    created_on: string | null;
-    rentable: string | null;
-    rubs_enabled: string | null;
-    rubs_enabled_on: string | null;
-    description: string | null;
-    rent_status: string | null;
-    legal_rent: string | null;
-    application_fee: string | null;
-    rent_ready: string | null;
-    unit_id: number | null;
-    computed_market_rent: string | null;
-    ready_for_showing_on: string | null;
-    visibility: string | null;
-    rentable_uid: string | null;
-    portfolio_id: number | null;
-    unit_integration_id: string | null;
-    unit_amenities: string | null;
-    unit_appliances: string | null;
-    unit_utilities: string | null;
-    billed_as: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Unit Directory Report Function ---
 async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<UnitDirectoryResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2479,45 +3018,6 @@ async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<UnitDire
 
   return response.data;
 }
-
-// --- Unit Inspection Report Types ---
-export type UnitInspectionArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  last_inspection_on_from?: string; // Optional (YYYY-MM-DD)
-  include_blank_inspection_date?: "1" | "0"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type UnitInspectionResult = {
-  results: Array<{
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-    unit_name: string | null;
-    last_inspection_date: string | null;
-    tenant_name: string | null;
-    tenant_primary_phone_number: string | null;
-    move_in_date: string | null;
-    move_out_date: string | null;
-    unit_id: number | null;
-    occupancy_id: number | null;
-    rentable: string | null;
-    unit_tags: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Unit Inspection Report Function ---
 async function getUnitInspectionReport(args: UnitInspectionArgs): Promise<UnitInspectionResult> {
@@ -2544,62 +3044,6 @@ async function getUnitInspectionReport(args: UnitInspectionArgs): Promise<UnitIn
   return response.data;
 }
 
-// --- Unit Vacancy Detail Report Types ---
-export type UnitVacancyDetailArgs = {
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  tags?: string; // Comma-separated list of tags
-  columns?: string[];
-};
-
-export type UnitVacancyDetailResult = {
-  results: Array<{
-    advertised_rent: string | null;
-    posted_to_website: string | null;
-    posted_to_internet: string | null;
-    property: string | null;
-    property_name: string | null;
-    amenities: string | null;
-    lockbox_enabled: string | null;
-    affordable_program: string | null;
-    address: string | null;
-    street: string | null;
-    street2: string | null;
-    city: string | null;
-    state: string | null;
-    zip: string | null;
-    unit: string | null;
-    unit_tags: string | null;
-    unit_type: string | null;
-    bed_and_bath: string | null;
-    sqft: number | null;
-    unit_status: string | null;
-    rent_ready: string | null;
-    days_vacant: number | null;
-    last_rent: string | null;
-    schd_rent: string | null;
-    new_rent: string | null;
-    last_move_in: string | null;
-    last_move_out: string | null;
-    available_on: string | null;
-    next_move_in: string | null;
-    description: string | null;
-    amenities_price: string | null;
-    computed_market_rent: string | null;
-    ready_for_showing_on: string | null;
-    unit_turn_target_date: string | null;
-    advertised_rent_months: Array<Record<string, unknown>>; // Array of objects, structure not fully defined
-    property_id: number | null;
-    unit_id: number | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Unit Vacancy Detail Report Function ---
 async function getUnitVacancyDetailReport(args: UnitVacancyDetailArgs): Promise<UnitVacancyDetailResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2615,58 +3059,6 @@ async function getUnitVacancyDetailReport(args: UnitVacancyDetailArgs): Promise<
 
   return response.data;
 }
-
-// --- Vendor Directory Report Types ---
-export type VendorDirectoryArgs = {
-  workers_comp_expiration_to?: string; // Optional (YYYY-MM-DD)
-  liability_expiration_to?: string; // Optional (YYYY-MM-DD)
-  epa_expiration_to?: string; // Optional (YYYY-MM-DD)
-  auto_insurance_expiration_to?: string; // Optional (YYYY-MM-DD)
-  state_license_expiration_to?: string; // Optional (YYYY-MM-DD)
-  contract_expiration_to?: string; // Optional (YYYY-MM-DD)
-  tags?: string; // Comma-separated list of tags
-  vendor_visibility?: "active" | "inactive" | "all"; // Defaults to "active"
-  payment_type?: "eCheck" | "Check" | "all"; // Defaults to "all" if not specified, needs check
-  created_by?: string; // Defaults to "All"
-  vendor_type?: string; // Defaults to "All"
-  columns?: string[];
-};
-
-export type VendorDirectoryResult = {
-  results: Array<{
-    company_name: string | null;
-    name: string | null;
-    address: string | null;
-    street: string | null;
-    street2: string | null;
-    city: string | null;
-    state: string | null;
-    zip: string | null;
-    phone_numbers: string | null;
-    email: string | null;
-    default_gl_account: string | null;
-    payment_type: string | null;
-    send1099: string | null;
-    workers_comp_expires: string | null;
-    liability_ins_expires: string | null;
-    epa_cert_expires: string | null;
-    auto_ins_expires: string | null;
-    state_lic_expires: string | null;
-    contract_expires: string | null;
-    tags: string | null;
-    vendor_id: number | null;
-    vendor_trades: string | null;
-    do_not_use_for_work_order: string | null;
-    terms: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    vendor_integration_id: string | null;
-    created_by: string | null;
-    vendor_type: string | null;
-    portal_activated: string | null;
-  }>;
-  next_page_url: string | null;
-};
 
 // --- Vendor Directory Report Function ---
 async function getVendorDirectoryReport(args: VendorDirectoryArgs): Promise<VendorDirectoryResult> {
@@ -2700,86 +3092,6 @@ async function getVendorDirectoryReport(args: VendorDirectoryArgs): Promise<Vend
   return response.data;
 }
 
-// --- Vendor Ledger Report Types ---
-export type VendorLedgerArgs = {
-  party_contact_info: {
-    company_id: string; // Required Vendor ID
-  };
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  occurred_on_from: string; // Required (YYYY-MM-DD)
-  occurred_on_to: string; // Required (YYYY-MM-DD)
-  reverse_transaction?: "1" | "0"; // Defaults to "0"
-  columns?: string[];
-};
-
-export type VendorLedgerResult = {
-  results: Array<{
-    reference_number: string | null;
-    bill_date: string | null;
-    due_date: string | null;
-    account: string | null;
-    account_name: string | null;
-    account_number: string | null;
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-    unit: string | null;
-    payee_name: string | null;
-    paid: string | null;
-    unpaid: string | null;
-    check_number: string | null;
-    payment_date: string | null;
-    description: string | null;
-    work_order: string | null;
-    cash_account: string | null;
-    txn_id: number | null;
-    payable_invoice_detail_id: number | null;
-    unit_id: number | null;
-    quantity: string | null;
-    rate: string | null;
-    work_order_assignee: string | null;
-    approval_status: string | null;
-    approved_by: string | null;
-    last_approver: string | null;
-    next_approvers: string | null;
-    days_pending_approval: string | null;
-    board_approval_status: string | null;
-    txn_created_at: string | null;
-    txn_updated_at: string | null;
-    created_by: string | null;
-    bank_account: string | null;
-    vendor_account_number: string | null;
-    service_from: string | null;
-    service_to: string | null;
-    other_payment_type: string | null;
-    purchase_order_number: string | null;
-    purchase_order_id: number | null;
-    project: string | null;
-    project_id: number | null;
-    service_request_id: number | null;
-    vendor_id: number | null;
-    cost_center_name: string | null;
-    cost_center_number: string | null;
-    work_order_issue: string | null;
-    work_order_id: number | null;
-    party_id: number | null;
-    party_type: string | null;
-  }>;
-  next_page_url: string | null;
-};
-
 // --- Vendor Ledger Report Function ---
 async function getVendorLedgerReport(args: VendorLedgerArgs): Promise<VendorLedgerResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
@@ -2811,115 +3123,6 @@ async function getVendorLedgerReport(args: VendorLedgerArgs): Promise<VendorLedg
   return response.data;
 }
 
-// --- Work Order Report Types ---
-export type WorkOrderArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  unit_ids?: string[];
-  property?: { property_id: string }; // Filter by a single property ID
-  parties_ids?: {
-    occupancies_ids?: string[];
-  };
-  party_contact_info?: {
-    company_id: string; // Vendor ID
-  };
-  assigned_user?: string; // User ID or "All", defaults to "All"
-  created_by?: string; // User ID or "All", defaults to "All"
-  priority?: "All" | "Low" | "Medium" | "High" | "Urgent"; // Defaults to "All"
-  from_inspection?: boolean | null; // Defaults to null/omit
-  current_estimate_approval_status?: "All" | "Pending" | "Approved" | "Declined"; // Defaults to "All"
-  work_order_statuses?: string[]; // List of status IDs
-  work_order_types?: Array<"unit_turn" | "tenant_requested" | "other">; // List of types
-  unit_turn_category?: Array<"all" | string>; // List of categories, defaults to ["all"]
-  status_date_range_from?: string; // YYYY-MM-DD
-  status_date_range_to?: string; // YYYY-MM-DD
-  status_date?: "all" | "created_at" | "completed_on"; // Defaults to "all"
-  columns?: string[];
-};
-
-export type WorkOrderResult = {
-  results: Array<{
-    property: string | null;
-    property_name: string | null;
-    property_id: number | null;
-    property_address: string | null;
-    property_street: string | null;
-    property_street2: string | null;
-    property_city: string | null;
-    property_state: string | null;
-    property_zip: string | null;
-    unit_address: string | null;
-    unit_street: string | null;
-    unit_street2: string | null;
-    unit_city: string | null;
-    unit_state: string | null;
-    unit_zip: string | null;
-    priority: string | null;
-    work_order_type: string | null;
-    service_request_number: string | null;
-    service_request_description: string | null;
-    home_warranty_expiration: string | null;
-    work_order_number: string | null;
-    job_description: string | null;
-    instructions: string | null;
-    status: string | null;
-    vendor_id: number | null;
-    vendor: string | null;
-    unit_id: number | null;
-    unit_name: string | null;
-    occupancy_id: number | null;
-    primary_tenant: string | null;
-    primary_tenant_email: string | null;
-    primary_tenant_phone_number: string | null;
-    created_at: string | null;
-    created_by: string | null;
-    assigned_user: string | null;
-    estimate_req_on: string | null;
-    estimated_on: string | null;
-    estimate_amount: string | null;
-    estimate_approval_status: string | null;
-    estimate_approved_on: string | null;
-    estimate_approval_last_requested_on: string | null;
-    scheduled_start: string | null;
-    scheduled_end: string | null;
-    work_completed_on: string | null;
-    completed_on: string | null;
-    last_billed_on: string | null;
-    canceled_on: string | null;
-    amount: string | null;
-    invoice: string | null;
-    unit_turn_id: string | null;
-    corporate_charge_amount: string | null;
-    corporate_charge_id: number | null;
-    discount_amount: string | null;
-    discount_bill_id: number | null;
-    markup_amount: string | null;
-    markup_bill_id: number | null;
-    tenant_total_charge_amount: string | null;
-    tenant_charge_ids: string | null; // Comma-separated IDs?
-    vendor_bill_amount: string | null;
-    vendor_bill_id: number | null;
-    vendor_charge_amount: string | null;
-    vendor_charge_id: number | null;
-    inspection_id: number | null;
-    inspection_date: string | null;
-    work_order_id: number | null;
-    service_request_id: number | null;
-    recurring: string | null;
-    submitted_by_tenant: string | null;
-    requesting_tenant: string | null;
-    maintenance_limit: string | null;
-    status_notes: string | null;
-    follow_up_on: string | null;
-    vendor_trade: string | null;
-    unit_turn_category: string | null;
-    work_order_issue: string | null;
-    survey_id: number | null;
-    vendor_portal_invoices: number | null;
-  }>;
-  next_page_url: string | null;
-};
-
-// --- Work Order Report Function ---
 async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrderResult> {
   if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
 
@@ -2961,83 +3164,12 @@ async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrderResult>
   return response.data;
 }
 
-// --- Work Order Labor Summary Report Types ---
-export type WorkOrderLaborSummaryArgs = {
-  property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
-  properties?: {
-    properties_ids?: string[];
-    property_groups_ids?: string[];
-    portfolios_ids?: string[];
-    owners_ids?: string[];
-  };
-  maintenance_tech?: string; // User ID or "All", defaults to "All"
-  work_order_statuses?: string[]; // List of status IDs
-  unit_turn?: "1" | "0"; // Defaults to "0" (false)
-  labor_performed_from: string; // Required (YYYY-MM-DD)
-  labor_performed_to: string; // Required (YYYY-MM-DD)
-  columns?: string[];
-};
-
-export type WorkOrderLaborSummaryResult = {
-  results: Array<{
-    work_order_number: string | null;
-    date: string | null;
-    maintenance_tech: string | null;
-    property_name: string | null;
-    unit_name: string | null;
-    start_time: string | null;
-    end_time: string | null;
-    worked_hours: string | null;
-    hours: string | null;
-    marked_after_hours: string | null;
-    hours_difference: string | null;
-    work_order_status: string | null;
-    description: string | null;
-    last_edited_by: string | null;
-    unit_turn_id: string | null;
-    timer_start: string | null;
-    timer_stop: string | null;
-    gl_account: string | null;
-    last_bill_created_at: string | null;
-    work_order_issue: string | null;
-    property_id: number | null;
-    unit_id: number | null;
-    work_order_id: number | null;
-    service_request_id: number | null;
-    labor_detail_id: number | null;
-  }>;
-  next_page_url: string | null;
-};
-
-// --- Work Order Labor Summary Report Function ---
-async function getWorkOrderLaborSummaryReport(args: WorkOrderLaborSummaryArgs): Promise<WorkOrderLaborSummaryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  if (!args.labor_performed_from || !args.labor_performed_to) {
-    throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
-  }
-
-  const {
-    property_visibility = "active",
-    maintenance_tech = "All",
-    unit_turn = "0", // Default to not filter by unit turn unless specified
-    ...rest
-  } = args;
-
-  const payload = {
-    property_visibility,
-    maintenance_tech,
-    unit_turn,
-    ...rest
-  };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
-}
+const appfolioLimiter = new Bottleneck({
+  reservoir: 7, // initial number of requests
+  reservoirRefreshAmount: 7,
+  reservoirRefreshInterval: 15 * 1000, // 15 seconds
+  maxConcurrent: 1 // ensure requests are spaced out
+});
 
 export {
   getAgedPayablesSummaryReport,
@@ -3084,13 +3216,6 @@ export {
   getVendorDirectoryReport,
   getVendorLedgerReport,
   getWorkOrderReport,
-  getWorkOrderLaborSummaryReport // Add new function to exports
+  getWorkOrderLaborSummaryReport,
+  getOwnerDirectoryReport
 };
-
-
-const appfolioLimiter = new Bottleneck({
-  reservoir: 7, // initial number of requests
-  reservoirRefreshAmount: 7,
-  reservoirRefreshInterval: 15 * 1000, // 15 seconds
-  maxConcurrent: 1 // ensure requests are spaced out
-});

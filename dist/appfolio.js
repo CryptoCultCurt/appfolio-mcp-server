@@ -3,6 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.delinquencyColumnsList = void 0;
 exports.getAgedPayablesSummaryReport = getAgedPayablesSummaryReport;
 exports.getAgedReceivablesDetailReport = getAgedReceivablesDetailReport;
 exports.getBudgetComparativeReport = getBudgetComparativeReport;
@@ -48,11 +49,62 @@ exports.getVendorDirectoryReport = getVendorDirectoryReport;
 exports.getVendorLedgerReport = getVendorLedgerReport;
 exports.getWorkOrderReport = getWorkOrderReport;
 exports.getWorkOrderLaborSummaryReport = getWorkOrderLaborSummaryReport;
+exports.getOwnerDirectoryReport = getOwnerDirectoryReport;
 const axios_1 = __importDefault(require("axios"));
 const dotenv_1 = __importDefault(require("dotenv"));
 const bottleneck_1 = __importDefault(require("bottleneck"));
 dotenv_1.default.config();
 const { VHOST, USERNAME, PASSWORD } = process.env;
+exports.delinquencyColumnsList = [
+    'unit', 'name', 'tenant_status', 'tags', 'phone_numbers', 'move_in', 'move_out',
+    'primary_tenant_email', 'unit_type', 'property', 'property_name', 'property_id',
+    'property_address', 'property_street', 'property_street2', 'property_city',
+    'property_state', 'property_zip', 'amount_receivable', 'delinquent_subsidy_amount',
+    '00_to30', '30_plus', '30_to60', '60_plus', '60_to90', '90_plus', 'this_month',
+    'last_month', 'month_before_last', 'delinquent_rent', 'delinquency_notes',
+    'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
+    'occupancy_id', 'property_group_id'
+];
+// --- Work Order Labor Summary Report Function ---
+async function getWorkOrderLaborSummaryReport(args) {
+    if (!VHOST || !USERNAME || !PASSWORD)
+        throw new Error('Missing AppFolio API credentials');
+    if (!args.labor_performed_from || !args.labor_performed_to) {
+        throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
+    }
+    const { property_visibility = "active", maintenance_tech = "All", unit_turn = "0", // Default to not filter by unit turn unless specified
+    ...rest } = args;
+    const payload = {
+        property_visibility,
+        maintenance_tech,
+        unit_turn,
+        ...rest
+    };
+    const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
+    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
+        auth: { username: USERNAME, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+    }));
+    return response.data;
+}
+// --- Owner Directory Report Function ---
+async function getOwnerDirectoryReport(args) {
+    if (!VHOST || !USERNAME || !PASSWORD)
+        throw new Error('Missing AppFolio API credentials');
+    const { property_visibility = "active", owner_visibility = "active", created_by = "All", ...rest } = args;
+    const payload = {
+        property_visibility,
+        owner_visibility,
+        created_by,
+        ...rest
+    };
+    const url = `https://${VHOST}.appfolio.com/api/v2/reports/owner_directory.json`;
+    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
+        auth: { username: USERNAME, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+    }));
+    return response.data;
+}
 async function getAgedPayablesSummaryReport(args) {
     if (!VHOST || !USERNAME || !PASSWORD)
         throw new Error('Missing AppFolio API credentials');
@@ -152,7 +204,7 @@ async function getDelinquencyAsOfReport(args) {
         property_visibility,
         tenant_statuses,
         amount_owed_in_account,
-        ...rest,
+        ...rest
     };
     const url = `https://${VHOST}.appfolio.com/api/v2/reports/delinquency_as_of.json`;
     const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
@@ -797,7 +849,6 @@ async function getVendorLedgerReport(args) {
     }));
     return response.data;
 }
-// --- Work Order Report Function ---
 async function getWorkOrderReport(args) {
     if (!VHOST || !USERNAME || !PASSWORD)
         throw new Error('Missing AppFolio API credentials');
@@ -820,28 +871,6 @@ async function getWorkOrderReport(args) {
         payload.from_inspection = from_inspection;
     }
     const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
-// --- Work Order Labor Summary Report Function ---
-async function getWorkOrderLaborSummaryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    if (!args.labor_performed_from || !args.labor_performed_to) {
-        throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
-    }
-    const { property_visibility = "active", maintenance_tech = "All", unit_turn = "0", // Default to not filter by unit turn unless specified
-    ...rest } = args;
-    const payload = {
-        property_visibility,
-        maintenance_tech,
-        unit_turn,
-        ...rest
-    };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
     const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
         auth: { username: USERNAME, password: PASSWORD },
         headers: { 'Content-Type': 'application/json' },

@@ -13,7 +13,7 @@ import {
   getTrialBalanceByPropertyReport, getCashflow12MonthReport, getIncomeStatement12MonthReport, getUnitDirectoryReport, 
   getUnitInspectionReport, getUnitVacancyDetailReport, getVendorDirectoryReport, getVendorLedgerReport, getWorkOrderReport, 
   getWorkOrderLaborSummaryReport, getCashflowReport, getDelinquencyAsOfReport, getExpenseDistributionReport, getGuestCardInquiriesReport,
-  getLeasingFunnelPerformanceReport, getPropertyDirectoryReport, getRentRollItemizedReport
+  getLeasingFunnelPerformanceReport, getPropertyDirectoryReport, getRentRollItemizedReport, getOwnerDirectoryReport, DelinquencyAsOfArgs
 } from "./appfolio";
 
 // Zod schema for Cash Flow Report arguments
@@ -145,7 +145,7 @@ const rentRollItemizedInputSchema = z.object({
 });
 
 const delinquencyAsOfInputSchema = z.object({
-  property_visibility: z.string(),
+  property_visibility: z.string().optional(),
   properties: z.object({
     properties_ids: z.array(z.string()).optional(),
     property_groups_ids: z.array(z.string()).optional(),
@@ -161,7 +161,16 @@ const delinquencyAsOfInputSchema = z.object({
     amount: z.string().optional(),
     comparator: z.string().optional()
   }).optional(),
-  columns: z.array(z.string()).optional()
+  columns: z.array(z.enum([
+    'unit', 'name', 'tenant_status', 'tags', 'phone_numbers', 'move_in', 'move_out',
+    'primary_tenant_email', 'unit_type', 'property', 'property_name', 'property_id',
+    'property_address', 'property_street', 'property_street2', 'property_city',
+    'property_state', 'property_zip', 'amount_receivable', 'delinquent_subsidy_amount',
+    '00_to30', '30_plus', '30_to60', '60_plus', '60_to90', '90_plus', 'this_month',
+    'last_month', 'month_before_last', 'delinquent_rent', 'delinquency_notes',
+    'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
+    'occupancy_id', 'property_group_id'
+  ])).optional()
 });
 
 const guestCardInquiriesInputSchema = z.object({
@@ -751,11 +760,54 @@ const workOrderLaborSummaryArgsSchema = z.object({
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 
+// --- Owner Directory Report Input Schema ---
+const ownerDirectoryColumnEnum = z.enum([
+  "name", "phone_numbers", "email", "alternative_payee", "payment_type",
+  "last_payment_date", "hold_payments", "owner_packet_reports",
+  "send_owner_packets_by_email", "properties_owned", "tags", "last_packet_sent",
+  "address", "street", "street2", "city", "state", "zip", "country",
+  "owner_id", "properties_owned_i_ds", "notes_for_the_owner", "first_name",
+  "last_name", "owner_integration_id", "created_by"
+]);
+
+const ownerDirectoryInputSchema = z.object({
+  property_visibility: z.string().optional().default("active"),
+  properties: z.object({
+    properties_ids: z.array(z.string()).optional(),
+    property_groups_ids: z.array(z.string()).optional(),
+    portfolios_ids: z.array(z.string()).optional(),
+    owners_ids: z.array(z.string()).optional(),
+  }).optional(),
+  tags: z.string().optional().describe("Comma-separated list of tags, e.g., 'bbq,deck'"),
+  owner_visibility: z.string().optional().default("active"),
+  created_by: z.string().optional().default("All"),
+  columns: z.array(ownerDirectoryColumnEnum).optional().describe("List of columns to include in the report"),
+});
+
 // Create the MCP server
 const server = new McpServer({
   name: "appfolio-mcp",
   version: "1.0.0",
 });
+
+// --- Register Owner Directory Report Tool ---
+server.tool(
+  "get_owner_directory_report",
+  "Returns an owner directory report based on specified filters.",
+  ownerDirectoryInputSchema.shape,
+  async (args, _extra: unknown) => {
+    const data = await getOwnerDirectoryReport(args as any); // Cast to any for now, should match OwnerDirectoryReportArgs
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(data),
+          mimeType: "application/json"
+        }
+      ]
+    };
+  }
+);
 
 // Register the cashflow report as a tool (with correct argument shape)
 server.tool(
@@ -780,7 +832,7 @@ server.tool(
   "get_property_directory_report",
   "Returns property directory details for the given filters.",
   propertyDirectoryInputSchema.shape,
-  async (args, _extra) => {
+  async (args, _extra: unknown) => {
     const data = await getPropertyDirectoryReport(args);
     return {
       content: [
@@ -798,7 +850,7 @@ server.tool(
   "get_account_totals_report",
   "Returns account totals for given filters and date range.",
   accountTotalsInputSchema.shape,
-  async (args, _extra) => {
+  async (args, _extra: unknown) => {
     // Ensure default for gl_account_ids
     const data = await getAccountTotalsReport({ ...args, gl_account_ids: args.gl_account_ids ?? "1" });
     return {
