@@ -1,9 +1,19 @@
 # Appfolio MCP Server (@fluegeldao/appfolio-mcp-server)
+[![smithery badge](https://smithery.ai/badge/@CryptoCultCurt/appfolio-mcp-server)](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server)
 
 A Model Context Protocol (MCP) server providing tools to interact with the Appfolio Property Manager Reporting API.
 
 ## Installation
 
+### Installing via Smithery
+
+To install appfolio-mcp-server for Claude Desktop automatically via [Smithery](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server):
+
+```bash
+npx -y @smithery/cli install @CryptoCultCurt/appfolio-mcp-server --client claude
+```
+
+### Manual Installation
 Install the package using npm:
 
 ```bash
