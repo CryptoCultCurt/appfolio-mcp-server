@@ -5,21 +5,12 @@ const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const zod_1 = require("zod");
 const appfolio_1 = require("./appfolio");
-// Zod schema for Cash Flow Report arguments
-const cashflowInputSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string(),
-    properties: zod_1.z.object({
-        properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    posted_on_from: zod_1.z.string(),
-    posted_on_to: zod_1.z.string(),
-    gl_account_map_id: zod_1.z.string().optional(),
-    exclude_suppressed_fees: zod_1.z.string().optional(),
-    columns: zod_1.z.array(zod_1.z.string()).optional(),
-});
+const cashflowReport_1 = require("./reports/cashflowReport");
+const accountTotalsReport_1 = require("./reports/accountTotalsReport");
+const agedPayablesSummaryReport_1 = require("./reports/agedPayablesSummaryReport");
+const rentRollItemizedReport_1 = require("./reports/rentRollItemizedReport");
+const guestCardInquiriesReport_1 = require("./reports/guestCardInquiriesReport");
+// Zod schema for Property Directory Report arguments
 const propertyDirectoryInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string(),
     properties: zod_1.z.object({
@@ -29,37 +20,6 @@ const propertyDirectoryInputSchema = zod_1.z.object({
         owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
     }).optional(),
     columns: zod_1.z.array(zod_1.z.string()).optional()
-});
-const accountTotalsInputSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string(),
-    properties: zod_1.z.object({
-        properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    gl_account_ids: zod_1.z.string().default("[1,2]"),
-    posted_on_from: zod_1.z.string(),
-    posted_on_to: zod_1.z.string(),
-    columns: zod_1.z.array(zod_1.z.string()).optional(),
-});
-const agedPayablesSummaryInputSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string().default("active"),
-    properties: zod_1.z.object({
-        properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    occurred_on_to: zod_1.z.string(),
-    party_contact_info: zod_1.z.object({
-        company_id: zod_1.z.string().optional()
-    }).optional(),
-    balance_operator: zod_1.z.object({
-        amount: zod_1.z.string().optional(),
-        comparator: zod_1.z.string().optional()
-    }).optional(),
-    columns: zod_1.z.array(zod_1.z.string()).optional(),
 });
 const agedReceivablesDetailInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().default("active"),
@@ -112,19 +72,6 @@ const expenseDistributionInputSchema = zod_1.z.object({
     gl_account_map_id: zod_1.z.string().optional(),
     columns: zod_1.z.array(zod_1.z.string()).optional(),
 });
-const rentRollItemizedInputSchema = zod_1.z.object({
-    properties: zod_1.z.object({
-        properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    unit_visibility: zod_1.z.string().optional(),
-    tags: zod_1.z.string().optional(),
-    gl_account_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    as_of_to: zod_1.z.string(),
-    columns: zod_1.z.array(zod_1.z.string()).optional(),
-});
 const delinquencyAsOfInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().optional(),
     properties: zod_1.z.object({
@@ -152,23 +99,6 @@ const delinquencyAsOfInputSchema = zod_1.z.object({
         'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
         'occupancy_id', 'property_group_id'
     ])).optional()
-});
-const guestCardInquiriesInputSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string().optional(),
-    properties: zod_1.z.object({
-        properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
-        owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    guest_card_sources: zod_1.z.array(zod_1.z.string()).optional(),
-    guest_card_statuses: zod_1.z.array(zod_1.z.string()).optional(),
-    guest_card_lead_types: zod_1.z.array(zod_1.z.string()).optional(),
-    assigned_user: zod_1.z.string().optional(),
-    filter_date_range_by: zod_1.z.string().optional(),
-    received_on_from: zod_1.z.string(),
-    received_on_to: zod_1.z.string(),
-    columns: zod_1.z.array(zod_1.z.string()).optional(),
 });
 const leasingFunnelPerformanceInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().optional(),
@@ -731,6 +661,7 @@ const server = new mcp_js_1.McpServer({
     name: "appfolio-mcp",
     version: "1.0.0",
 });
+const transport = new stdio_js_1.StdioServerTransport();
 // --- Register Owner Directory Report Tool ---
 server.tool("get_owner_directory_report", "Returns an owner directory report based on specified filters.", ownerDirectoryInputSchema.shape, async (args, _extra) => {
     const data = await (0, appfolio_1.getOwnerDirectoryReport)(args); // Cast to any for now, should match OwnerDirectoryReportArgs
@@ -744,47 +675,8 @@ server.tool("get_owner_directory_report", "Returns an owner directory report bas
         ]
     };
 });
-// Register the cashflow report as a tool (with correct argument shape)
-server.tool("get_cashflow_report", "Returns Cash Flow Details including income and expenses for given time period.", cashflowInputSchema.shape, async (args, _extra) => {
-    const data = await (0, appfolio_1.getCashflowReport)(args);
-    return {
-        content: [
-            {
-                type: "text",
-                text: JSON.stringify(data),
-                mimeType: "application/json"
-            }
-        ]
-    };
-});
 server.tool("get_property_directory_report", "Returns property directory details for the given filters.", propertyDirectoryInputSchema.shape, async (args, _extra) => {
     const data = await (0, appfolio_1.getPropertyDirectoryReport)(args);
-    return {
-        content: [
-            {
-                type: "text",
-                text: JSON.stringify(data),
-                mimeType: "application/json"
-            }
-        ]
-    };
-});
-server.tool("get_account_totals_report", "Returns account totals for given filters and date range.", accountTotalsInputSchema.shape, async (args, _extra) => {
-    // Ensure default for gl_account_ids
-    const data = await (0, appfolio_1.getAccountTotalsReport)({ ...args, gl_account_ids: args.gl_account_ids ?? "1" });
-    return {
-        content: [
-            {
-                type: "text",
-                text: JSON.stringify(data),
-                mimeType: "application/json"
-            }
-        ]
-    };
-});
-server.tool("get_aged_payables_summary_report", "Returns aged payables summary for the given filters.", agedPayablesSummaryInputSchema.shape, async (args, _extra) => {
-    // Ensure default for property_visibility
-    const data = await (0, appfolio_1.getAgedPayablesSummaryReport)({ ...args, property_visibility: args.property_visibility ?? "active" });
     return {
         content: [
             {
@@ -831,33 +723,8 @@ server.tool("get_expense_distribution_report", "Returns expense distribution rep
         ]
     };
 });
-const transport = new stdio_js_1.StdioServerTransport();
-server.tool("get_rent_roll_itemized_report", "Returns rent roll itemized report for the given filters.", rentRollItemizedInputSchema.shape, async (args, _extra) => {
-    const data = await (0, appfolio_1.getRentRollItemizedReport)({ ...args, unit_visibility: args.unit_visibility ?? "active" });
-    return {
-        content: [
-            {
-                type: "text",
-                text: JSON.stringify(data),
-                mimeType: "application/json"
-            }
-        ]
-    };
-});
 server.tool("get_delinquency_as_of_report", "Returns delinquency as of report for the given filters.", delinquencyAsOfInputSchema.shape, async (args, _extra) => {
     const data = await (0, appfolio_1.getDelinquencyAsOfReport)(args);
-    return {
-        content: [
-            {
-                type: "text",
-                text: JSON.stringify(data),
-                mimeType: "application/json"
-            }
-        ]
-    };
-});
-server.tool("get_guest_card_inquiries_report", "Returns guest card inquiries report for the given filters.", guestCardInquiriesInputSchema.shape, async (args, _extra) => {
-    const data = await (0, appfolio_1.getGuestCardInquiriesReport)(args);
     return {
         content: [
             {
@@ -1288,4 +1155,9 @@ server.tool("get_work_order_labor_summary_report", "Returns a report detailing w
         ]
     };
 });
+(0, accountTotalsReport_1.registerAccountTotalsReportTool)(server);
+(0, cashflowReport_1.registerCashflowReportTool)(server);
+(0, agedPayablesSummaryReport_1.registerAgedPayablesSummaryReportTool)(server);
+(0, rentRollItemizedReport_1.registerRentRollItemizedReportTool)(server);
+(0, guestCardInquiriesReport_1.registerGuestCardInquiriesReportTool)(server);
 server.connect(transport);

@@ -3,7 +3,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
 import {
-  getAccountTotalsReport, getAgedPayablesSummaryReport, getAgedReceivablesDetailReport, getAnnualBudgetComparativeReport,
+  getAgedReceivablesDetailReport, getAnnualBudgetComparativeReport,
   getAnnualBudgetForecastReport, getBalanceSheetReport, getBudgetComparativeReport, getCancelledWorkflowsReport,
   getChartOfAccountsReport, getCompletedWorkflowsReport, getFixedAssetsReport, getInProgressWorkflowsReport,
   getIncomeStatementDateRangeReport, getLeaseExpirationDetailByMonthReport, getLeasingSummaryReport, getLoansReport, 
@@ -12,26 +12,16 @@ import {
   getScreeningAssessmentReport, getSecurityDepositFundsDetailReport, getTenantDirectoryReport, getTenantLedgerReport, 
   getTrialBalanceByPropertyReport, getCashflow12MonthReport, getIncomeStatement12MonthReport, getUnitDirectoryReport, 
   getUnitInspectionReport, getUnitVacancyDetailReport, getVendorDirectoryReport, getVendorLedgerReport, getWorkOrderReport, 
-  getWorkOrderLaborSummaryReport, getCashflowReport, getDelinquencyAsOfReport, getExpenseDistributionReport, getGuestCardInquiriesReport,
-  getLeasingFunnelPerformanceReport, getPropertyDirectoryReport, getRentRollItemizedReport, getOwnerDirectoryReport, DelinquencyAsOfArgs
+  getWorkOrderLaborSummaryReport, getDelinquencyAsOfReport, getExpenseDistributionReport, 
+  getLeasingFunnelPerformanceReport, getPropertyDirectoryReport, getOwnerDirectoryReport, DelinquencyAsOfArgs
 } from "./appfolio";
+import { registerCashflowReportTool } from "./reports/cashflowReport";
+import { registerAccountTotalsReportTool } from "./reports/accountTotalsReport";
+import { registerAgedPayablesSummaryReportTool } from "./reports/agedPayablesSummaryReport";
+import { registerRentRollItemizedReportTool } from "./reports/rentRollItemizedReport";
+import { registerGuestCardInquiriesReportTool } from "./reports/guestCardInquiriesReport";
 
-// Zod schema for Cash Flow Report arguments
-const cashflowInputSchema = z.object({
-  property_visibility: z.string(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  posted_on_from: z.string(),
-  posted_on_to: z.string(),
-  gl_account_map_id: z.string().optional(),
-  exclude_suppressed_fees: z.string().optional(),
-  columns: z.array(z.string()).optional(),
-});
-
+// Zod schema for Property Directory Report arguments
 const propertyDirectoryInputSchema = z.object({
   property_visibility: z.string(),
   properties: z.object({
@@ -41,39 +31,6 @@ const propertyDirectoryInputSchema = z.object({
     owners_ids: z.array(z.string()).optional(),
   }).optional(),
   columns: z.array(z.string()).optional()
-});
-
-const accountTotalsInputSchema = z.object({
-  property_visibility: z.string(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  gl_account_ids: z.string().default("[1,2]"),
-  posted_on_from: z.string(),
-  posted_on_to: z.string(),
-  columns: z.array(z.string()).optional(),
-});
-
-const agedPayablesSummaryInputSchema = z.object({
-  property_visibility: z.string().default("active"),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  occurred_on_to: z.string(),
-  party_contact_info: z.object({
-    company_id: z.string().optional()
-  }).optional(),
-  balance_operator: z.object({
-    amount: z.string().optional(),
-    comparator: z.string().optional()
-  }).optional(),
-  columns: z.array(z.string()).optional(),
 });
 
 const agedReceivablesDetailInputSchema = z.object({
@@ -130,20 +87,6 @@ const expenseDistributionInputSchema = z.object({
   columns: z.array(z.string()).optional(),
 });
 
-const rentRollItemizedInputSchema = z.object({
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  unit_visibility: z.string().optional(),
-  tags: z.string().optional(),
-  gl_account_ids: z.array(z.string()).optional(),
-  as_of_to: z.string(),
-  columns: z.array(z.string()).optional(),
-});
-
 const delinquencyAsOfInputSchema = z.object({
   property_visibility: z.string().optional(),
   properties: z.object({
@@ -171,24 +114,6 @@ const delinquencyAsOfInputSchema = z.object({
     'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
     'occupancy_id', 'property_group_id'
   ])).optional()
-});
-
-const guestCardInquiriesInputSchema = z.object({
-  property_visibility: z.string().optional(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  guest_card_sources: z.array(z.string()).optional(),
-  guest_card_statuses: z.array(z.string()).optional(),
-  guest_card_lead_types: z.array(z.string()).optional(),
-  assigned_user: z.string().optional(),
-  filter_date_range_by: z.string().optional(),
-  received_on_from: z.string(),
-  received_on_to: z.string(),
-  columns: z.array(z.string()).optional(),
 });
 
 const leasingFunnelPerformanceInputSchema = z.object({
@@ -790,6 +715,8 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
+const transport = new StdioServerTransport();
+
 // --- Register Owner Directory Report Tool ---
 server.tool(
   "get_owner_directory_report",
@@ -809,69 +736,12 @@ server.tool(
   }
 );
 
-// Register the cashflow report as a tool (with correct argument shape)
-server.tool(
-  "get_cashflow_report",
-  "Returns Cash Flow Details including income and expenses for given time period.",
-  cashflowInputSchema.shape,
-  async (args, _extra) => {
-    const data = await getCashflowReport(args);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(data),
-          mimeType: "application/json"
-        }
-      ]
-    };
-  }
-);
-
 server.tool(
   "get_property_directory_report",
   "Returns property directory details for the given filters.",
   propertyDirectoryInputSchema.shape,
   async (args, _extra: unknown) => {
     const data = await getPropertyDirectoryReport(args);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(data),
-          mimeType: "application/json"
-        }
-      ]
-    };
-  }
-);
-
-server.tool(
-  "get_account_totals_report",
-  "Returns account totals for given filters and date range.",
-  accountTotalsInputSchema.shape,
-  async (args, _extra: unknown) => {
-    // Ensure default for gl_account_ids
-    const data = await getAccountTotalsReport({ ...args, gl_account_ids: args.gl_account_ids ?? "1" });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(data),
-          mimeType: "application/json"
-        }
-      ]
-    };
-  }
-);
-
-server.tool(
-  "get_aged_payables_summary_report",
-  "Returns aged payables summary for the given filters.",
-  agedPayablesSummaryInputSchema.shape,
-  async (args, _extra: unknown) => {
-    // Ensure default for property_visibility
-    const data = await getAgedPayablesSummaryReport({ ...args, property_visibility: args.property_visibility ?? "active" });
     return {
       content: [
         {
@@ -938,49 +808,12 @@ server.tool(
   }
 );
 
-const transport = new StdioServerTransport();
-server.tool(
-  "get_rent_roll_itemized_report",
-  "Returns rent roll itemized report for the given filters.",
-  rentRollItemizedInputSchema.shape,
-  async (args, _extra: unknown) => {
-    const data = await getRentRollItemizedReport({ ...args, unit_visibility: args.unit_visibility ?? "active" });
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(data),
-          mimeType: "application/json"
-        }
-      ]
-    };
-  }
-);
-
 server.tool(
   "get_delinquency_as_of_report",
   "Returns delinquency as of report for the given filters.",
   delinquencyAsOfInputSchema.shape,
   async (args, _extra: unknown) => {
     const data = await getDelinquencyAsOfReport(args);
-    return {
-      content: [
-        {
-          type: "text",
-          text: JSON.stringify(data),
-          mimeType: "application/json"
-        }
-      ]
-    };
-  }
-);
-
-server.tool(
-  "get_guest_card_inquiries_report",
-  "Returns guest card inquiries report for the given filters.",
-  guestCardInquiriesInputSchema.shape,
-  async (args, _extra: unknown) => {
-    const data = await getGuestCardInquiriesReport(args);
     return {
       content: [
         {
@@ -1625,5 +1458,11 @@ server.tool(
     };
   }
 );
+
+registerAccountTotalsReportTool(server);
+registerCashflowReportTool(server);
+registerAgedPayablesSummaryReportTool(server);
+registerRentRollItemizedReportTool(server);
+registerGuestCardInquiriesReportTool(server);
 
 server.connect(transport);

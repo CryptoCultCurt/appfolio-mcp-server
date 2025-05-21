@@ -3,17 +3,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.delinquencyColumnsList = void 0;
-exports.getAgedPayablesSummaryReport = getAgedPayablesSummaryReport;
+exports.getGuestCardInquiriesReport = exports.getAccountTotalsReport = exports.getCashflowReport = exports.getRentRollItemizedReport = exports.getAgedPayablesSummaryReport = exports.appfolioLimiter = exports.delinquencyColumnsList = void 0;
 exports.getAgedReceivablesDetailReport = getAgedReceivablesDetailReport;
 exports.getBudgetComparativeReport = getBudgetComparativeReport;
 exports.getExpenseDistributionReport = getExpenseDistributionReport;
-exports.getRentRollItemizedReport = getRentRollItemizedReport;
-exports.getCashflowReport = getCashflowReport;
 exports.getPropertyDirectoryReport = getPropertyDirectoryReport;
-exports.getAccountTotalsReport = getAccountTotalsReport;
 exports.getDelinquencyAsOfReport = getDelinquencyAsOfReport;
-exports.getGuestCardInquiriesReport = getGuestCardInquiriesReport;
 exports.getLeasingFunnelPerformanceReport = getLeasingFunnelPerformanceReport;
 exports.getAnnualBudgetComparativeReport = getAnnualBudgetComparativeReport;
 exports.getAnnualBudgetForecastReport = getAnnualBudgetForecastReport;
@@ -55,6 +50,16 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const bottleneck_1 = __importDefault(require("bottleneck"));
 dotenv_1.default.config();
 const { VHOST, USERNAME, PASSWORD } = process.env;
+const cashflowReport_1 = require("./reports/cashflowReport"); // Corrected casing
+Object.defineProperty(exports, "getCashflowReport", { enumerable: true, get: function () { return cashflowReport_1.getCashflowReport; } });
+const accountTotalsReport_1 = require("./reports/accountTotalsReport");
+Object.defineProperty(exports, "getAccountTotalsReport", { enumerable: true, get: function () { return accountTotalsReport_1.getAccountTotalsReport; } });
+const agedPayablesSummaryReport_1 = require("./reports/agedPayablesSummaryReport");
+Object.defineProperty(exports, "getAgedPayablesSummaryReport", { enumerable: true, get: function () { return agedPayablesSummaryReport_1.getAgedPayablesSummaryReport; } });
+const rentRollItemizedReport_1 = require("./reports/rentRollItemizedReport");
+Object.defineProperty(exports, "getRentRollItemizedReport", { enumerable: true, get: function () { return rentRollItemizedReport_1.getRentRollItemizedReport; } });
+const guestCardInquiriesReport_1 = require("./reports/guestCardInquiriesReport");
+Object.defineProperty(exports, "getGuestCardInquiriesReport", { enumerable: true, get: function () { return guestCardInquiriesReport_1.getGuestCardInquiriesReport; } });
 exports.delinquencyColumnsList = [
     'unit', 'name', 'tenant_status', 'tags', 'phone_numbers', 'move_in', 'move_out',
     'primary_tenant_email', 'unit_type', 'property', 'property_name', 'property_id',
@@ -105,18 +110,6 @@ async function getOwnerDirectoryReport(args) {
     }));
     return response.data;
 }
-async function getAgedPayablesSummaryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // Set default for property_visibility if not provided
-    const payload = { ...args, property_visibility: args.property_visibility ?? "active" };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/aged_payables_summary.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
 async function getAgedReceivablesDetailReport(args) {
     if (!VHOST || !USERNAME || !PASSWORD)
         throw new Error('Missing AppFolio API credentials');
@@ -152,48 +145,6 @@ async function getExpenseDistributionReport(args) {
     }));
     return response.data;
 }
-async function getRentRollItemizedReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const payload = { ...args, unit_visibility: args.unit_visibility ?? "active" };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/rent_roll_itemized.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
-async function getCashflowReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/cash_flow_detail.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, args, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
-async function getPropertyDirectoryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/property_directory.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, args, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
-async function getAccountTotalsReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const payload = { ...args, gl_account_ids: args.gl_account_ids ?? "1" }; // Assuming "1" is a sensible default for gl_account_ids
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/account_totals.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
 async function getDelinquencyAsOfReport(args) {
     if (!VHOST || !USERNAME || !PASSWORD)
         throw new Error('Missing AppFolio API credentials');
@@ -207,24 +158,6 @@ async function getDelinquencyAsOfReport(args) {
         ...rest
     };
     const url = `https://${VHOST}.appfolio.com/api/v2/reports/delinquency_as_of.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
-}
-async function getGuestCardInquiriesReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const { property_visibility = "active", assigned_user_visibility = "active", guest_card_status = "open", // Default based on previous implementation
-    ...rest } = args;
-    const payload = {
-        property_visibility,
-        assigned_user_visibility,
-        guest_card_status,
-        ...rest
-    };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/guest_card_inquiries.json`;
     const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
         auth: { username: USERNAME, password: PASSWORD },
         headers: { 'Content-Type': 'application/json' },
@@ -877,9 +810,20 @@ async function getWorkOrderReport(args) {
     }));
     return response.data;
 }
+async function getPropertyDirectoryReport(args) {
+    if (!VHOST || !USERNAME || !PASSWORD)
+        throw new Error('Missing AppFolio API credentials');
+    const url = `https://${VHOST}.appfolio.com/api/v2/reports/property_directory.json`;
+    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, args, {
+        auth: { username: USERNAME, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+    }));
+    return response.data;
+}
 const appfolioLimiter = new bottleneck_1.default({
     reservoir: 7, // initial number of requests
     reservoirRefreshAmount: 7,
     reservoirRefreshInterval: 15 * 1000, // 15 seconds
     maxConcurrent: 1 // ensure requests are spaced out
 });
+exports.appfolioLimiter = appfolioLimiter;
