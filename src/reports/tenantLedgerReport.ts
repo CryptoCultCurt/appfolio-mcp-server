@@ -1,0 +1,84 @@
+import { z } from 'zod';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { appfolioLimiter } from '../appfolio';
+import axios from 'axios';
+
+const { VHOST, USERNAME, PASSWORD } = process.env;
+
+// --- Tenant Ledger Report Types ---
+export type TenantLedgerArgs = {
+    parties_ids: {
+      occupancies_ids: string[]; // Required
+    };
+    occurred_on_from: string; // Required (YYYY-MM-DD)
+    occurred_on_to: string; // Required (YYYY-MM-DD)
+    transactions_shown?: "tenant" | "owner" | "all"; // Defaults to "tenant"
+    columns?: string[];
+  };
+  
+  export type TenantLedgerResult = {
+    results: Array<{
+      date: string | null;
+      payer: string | null;
+      description: string | null;
+      debit: string | null;
+      credit: string | null;
+      credit_debit_balance: string | null;
+    }>;
+    next_page_url: string | null;
+  };
+
+
+// Zod schema for Tenant Ledger Report arguments
+const tenantLedgerArgsSchema = z.object({
+    parties_ids: z.object({
+      occupancies_ids: z.array(z.string()).nonempty("At least one occupancy ID is required").describe('Required. Array of occupancy IDs to filter by.')
+    }).describe('Required. Specify the occupancies to include.'),
+    occurred_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The start date for the reporting period (YYYY-MM-DD).'),
+    occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The end date for the reporting period (YYYY-MM-DD).'),
+    transactions_shown: z.enum(["tenant", "owner", "all"]).optional().default("tenant").describe('Filter transactions shown. Defaults to "tenant"'),
+    columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
+  });
+
+// --- Tenant Ledger Report Function ---
+export async function getTenantLedgerReport(args: TenantLedgerArgs): Promise<TenantLedgerResult> {
+    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+    if (!args.parties_ids?.occupancies_ids || args.parties_ids.occupancies_ids.length === 0) {
+      throw new Error('Missing required argument: parties_ids.occupancies_ids must contain at least one ID');
+    }
+    if (!args.occurred_on_from || !args.occurred_on_to) {
+      throw new Error('Missing required arguments: occurred_on_from and occurred_on_to (format YYYY-MM-DD)');
+    }
+  
+    const { transactions_shown = "tenant", ...rest } = args;
+    const payload = { transactions_shown, ...rest };
+  
+    const url = `https://${VHOST}.appfolio.com/api/v2/reports/tenant_ledger.json`;
+    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
+      auth: { username: USERNAME, password: PASSWORD },
+      headers: { 'Content-Type': 'application/json' },
+    }));
+  
+    return response.data;
+  }
+
+  // --- Tenant Ledger Report Tool ---
+  export function registerTenantLedgerReportTool(server: McpServer) {
+    server.tool(
+      "get_tenant_ledger_report",
+      "Generates a report on tenant ledgers.",
+      tenantLedgerArgsSchema.shape,
+      async (args, _extra: unknown) => {
+        const data = await getTenantLedgerReport(args);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(data),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      }
+    );
+  }

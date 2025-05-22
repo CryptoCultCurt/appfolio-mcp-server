@@ -1,0 +1,116 @@
+import { z } from 'zod';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { appfolioLimiter } from '../appfolio';
+import axios from 'axios';
+
+const { VHOST, USERNAME, PASSWORD } = process.env;
+
+export type ScreeningAssessmentArgs = {
+  property_visibility?: "active" | "hidden" | "all";
+  properties?: {
+    properties_ids?: string[];
+    property_groups_ids?: string[];
+    portfolios_ids?: string[];
+    owners_ids?: string[];
+  };
+  screening_date_from?: string;
+  screening_date_to?: string;
+  statuses?: string[];
+  decision_statuses?: string[];
+  columns?: string[];
+};
+
+export type ScreeningAssessmentResult = {
+  results: Array<{
+    screening_id: number;
+    screening_type: string;
+    screening_status: string;
+    decision_status: string;
+    screening_date: string;
+    completed_date: string | null;
+    applicant_name: string;
+    applicant_email: string;
+    applicant_phone: string;
+    property_name: string;
+    property_id: number;
+    unit_number: string;
+    unit_id: number;
+    move_in_date: string | null;
+    lease_term: number | null;
+    monthly_rent: string | null;
+    security_deposit: string | null;
+    application_fee: string | null;
+    screening_fee: string | null;
+    screening_fee_paid: string | null;
+    screening_fee_payment_date: string | null;
+    screening_fee_payment_method: string | null;
+    screening_fee_payment_status: string | null;
+    screening_fee_payment_id: number | null;
+    screening_fee_payment_notes: string | null;
+    screening_fee_refunded: string | null;
+    screening_fee_refund_date: string | null;
+    screening_fee_refund_amount: string | null;
+    screening_fee_refund_method: string | null;
+    screening_fee_refund_status: string | null;
+    screening_fee_refund_id: number | null;
+    screening_fee_refund_notes: string | null;
+    screening_fee_waived: string | null;
+    screening_fee_waived_date: string | null;
+    screening_fee_waived_by: string | null;
+    screening_fee_waived_reason: string | null;
+    screening_fee_waived_notes: string | null;
+    created_by: string | null;
+    created_at: string;
+    updated_at: string;
+  }>;
+  next_page_url: string | null;
+};
+
+const screeningAssessmentInputSchema = z.object({
+  property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active"),
+  properties: z.object({
+    properties_ids: z.array(z.string()).optional(),
+    property_groups_ids: z.array(z.string()).optional(),
+    portfolios_ids: z.array(z.string()).optional(),
+    owners_ids: z.array(z.string()).optional()
+  }).optional(),
+  screening_date_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
+  screening_date_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
+  statuses: z.array(z.string()).optional(),
+  decision_statuses: z.array(z.string()).optional(),
+  columns: z.array(z.string()).optional()
+});
+
+export async function getScreeningAssessmentReport(args: ScreeningAssessmentArgs): Promise<ScreeningAssessmentResult> {
+  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+  
+  const payload = { ...args };
+  
+  const url = `https://${VHOST}.appfolio.com/api/v2/reports/screening_assessment.json`;
+  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
+    auth: { username: USERNAME, password: PASSWORD },
+    headers: { 'Content-Type': 'application/json' },
+  }));
+
+  return response.data;
+}
+
+export function registerScreeningAssessmentReportTool(server: McpServer) {
+  server.tool(
+    "get_screening_assessment_report",
+    "Returns screening assessment report for the given filters.",
+    screeningAssessmentInputSchema.shape,
+    async (args: any, _extra: any) => {
+      const data = await getScreeningAssessmentReport(args as ScreeningAssessmentArgs);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(data),
+            mimeType: "application/json"
+          }
+        ]
+      };
+    }
+  );
+}
