@@ -101,6 +101,5 @@ const transport = new stdio_js_1.StdioServerTransport();
 (0, unitVacancyDetail_1.registerUnitVacancyDetailReportTool)(server);
 (0, vendorDirectoryReport_1.registerVendorDirectoryReportTool)(server);
 (0, workOrderReport_1.registerWorkOrderReportTool)(server);
-(0, workOrderLaborSummaryReport_1.registerWorkOrderLaborSummaryReportTool)(server);
 server.connect(transport);
-console.log(`MCP Server listening on port ${process.env.PORT}`);
+//console.log(`MCP Server listening on port ${process.env.PORT}`);

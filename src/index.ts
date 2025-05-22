@@ -52,7 +52,7 @@ import { registerTenantLedgerReportTool } from "./reports/tenantLedgerReport";
 // Create the MCP server
 const server = new McpServer({
   name: "appfolio-mcp",
-  version: "1.0.0",
+  version: "1.0.1",
 });
 
 const transport = new StdioServerTransport();
@@ -103,7 +103,6 @@ registerUnitInspectionReportTool(server);
 registerUnitVacancyDetailReportTool(server);
 registerVendorDirectoryReportTool(server);
 registerWorkOrderReportTool(server);
-registerWorkOrderLaborSummaryReportTool(server);
 
 server.connect(transport);
-console.log(`MCP Server listening on port ${process.env.PORT}`);
+//console.log(`MCP Server listening on port ${process.env.PORT}`);
