@@ -1,14 +1,8 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Originally from src/appfolio.ts (lines 65-79)
+// --- Income Statement Date Range Report Types ---
 export type IncomeStatementDateRangeArgs = {
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
@@ -22,6 +16,7 @@ export type IncomeStatementDateRangeArgs = {
   gl_account_map_id?: string;
   level_of_detail?: "detail_view" | "summary_view";
   include_zero_balance_gl_accounts?: "0" | "1";
+  fund_type?: "all" | "operating" | "capital";
   columns?: string[];
 };
 
@@ -49,26 +44,33 @@ const incomeStatementDateRangeArgsSchema = z.object({
   gl_account_map_id: z.string().optional().describe('Filter by a specific GL account map ID'),
   level_of_detail: z.enum(["detail_view", "summary_view"]).default("detail_view").optional().describe('Specify the level of detail. Defaults to "detail_view"'),
   include_zero_balance_gl_accounts: z.enum(["0", "1"]).default("0").optional().describe('Include GL accounts with zero balance. Defaults to "0" (false)'),
+  fund_type: z.enum(["all", "operating", "capital"]).default("all").optional().describe('Filter by fund type. Defaults to "all"'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 
 // Originally from src/appfolio.ts (function starting line 1479)
 export async function getIncomeStatementDateRangeReport(args: IncomeStatementDateRangeArgs): Promise<IncomeStatementDateRangeResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
+  if (!args.posted_on_from || !args.posted_on_to) {
+    throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
   }
-  // Required fields posted_on_from and posted_on_to are enforced by Zod schema
 
-  // Defaults are now handled by Zod schema
-  const payload = args;
+  const {
+    property_visibility = "active",
+    fund_type = "all",
+    level_of_detail = "detail_view",
+    include_zero_balance_gl_accounts = "0",
+    ...rest
+  } = args;
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/income_statement_date_range.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
+  const payload = {
+    property_visibility,
+    fund_type,
+    level_of_detail,
+    include_zero_balance_gl_accounts,
+    ...rest
+  };
 
-  return response.data;
+  return makeAppfolioApiCall<IncomeStatementDateRangeResult>('income_statement_date_range.json', payload);
 }
 
 // New registration function for MCP

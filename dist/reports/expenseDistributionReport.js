@@ -1,32 +1,17 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.expenseDistributionInputSchema = void 0;
 exports.getExpenseDistributionReport = getExpenseDistributionReport;
 exports.registerExpenseDistributionReportTool = registerExpenseDistributionReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
-const bottleneck_1 = __importDefault(require("bottleneck"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
-// Limiter, assuming it's used by this report function or similar ones
-const appfolioLimiter = new bottleneck_1.default({
-    reservoir: 7,
-    reservoirRefreshAmount: 7,
-    reservoirRefreshInterval: 15 * 1000,
-    maxConcurrent: 1
-});
+const appfolio_1 = require("../appfolio");
 async function getExpenseDistributionReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const payload = { ...args, property_visibility: args.property_visibility ?? "active" };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/expense_distribution.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.posted_on_from || !args.posted_on_to) {
+        throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
+    }
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('expense_distribution.json', payload);
 }
 exports.expenseDistributionInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().default("active").optional(),

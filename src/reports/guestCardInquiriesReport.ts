@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Type definitions based on src/appfolio.ts (Steps 155 & 107)
 export type GuestCardInquiriesArgs = {
@@ -97,15 +94,14 @@ const guestCardInquiriesInputSchema = z.object({
 
 // Function definition from src/appfolio.ts (Step 153)
 export async function getGuestCardInquiriesReport(args: GuestCardInquiriesArgs): Promise<GuestCardInquiriesResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Defaults are now handled by the Zod schema
-  const payload = { ...args };
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/guest_card_inquiries.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  if (!args.received_on_from || !args.received_on_to) {
+    throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
+  }
+
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<GuestCardInquiriesResult>('guest_card_inquiries.json', payload);
 }
 
 // MCP Tool Registration Function

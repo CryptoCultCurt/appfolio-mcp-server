@@ -1,22 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.delinquencyAsOfInputSchema = exports.delinquencyColumnsList = void 0;
 exports.getDelinquencyAsOfReport = getDelinquencyAsOfReport;
 exports.registerDelinquencyAsOfReportTool = registerDelinquencyAsOfReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
-const bottleneck_1 = __importDefault(require("bottleneck"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
-// Limiter, assuming it's used by this report function or similar ones
-const appfolioLimiter = new bottleneck_1.default({
-    reservoir: 7,
-    reservoirRefreshAmount: 7,
-    reservoirRefreshInterval: 15 * 1000,
-    maxConcurrent: 1
-});
+const appfolio_1 = require("../appfolio");
 exports.delinquencyColumnsList = [
     'unit', 'name', 'tenant_status', 'tags', 'phone_numbers', 'move_in', 'move_out',
     'primary_tenant_email', 'unit_type', 'property', 'property_name', 'property_id',
@@ -28,8 +16,9 @@ exports.delinquencyColumnsList = [
     'occupancy_id', 'property_group_id'
 ];
 async function getDelinquencyAsOfReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
+    if (!args.as_of) {
+        throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
+    }
     const { property_visibility = "active", tenant_statuses = ["0", "4"], amount_owed_in_account = "all", ...rest } = args;
     const payload = {
         property_visibility,
@@ -37,12 +26,7 @@ async function getDelinquencyAsOfReport(args) {
         amount_owed_in_account,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/delinquency_as_of.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('delinquency_as_of.json', payload);
 }
 exports.delinquencyAsOfInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().default("active").optional(),
@@ -52,7 +36,7 @@ exports.delinquencyAsOfInputSchema = zod_1.z.object({
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
     }).optional(),
-    occurred_on_to: zod_1.z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."),
+    as_of: zod_1.z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."),
     delinquency_note_range: zod_1.z.string().optional(),
     tenant_statuses: zod_1.z.array(zod_1.z.string()).default(["0", "4"].slice()).optional(),
     tags: zod_1.z.string().optional(),

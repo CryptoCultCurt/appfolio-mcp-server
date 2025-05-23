@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUnitInspectionReport = getUnitInspectionReport;
 exports.registerUnitInspectionReportTool = registerUnitInspectionReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Unit Inspection Report arguments
 const unitInspectionArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
@@ -24,20 +19,13 @@ const unitInspectionArgsSchema = zod_1.z.object({
 });
 // --- Unit Inspection Report Function ---
 async function getUnitInspectionReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     const { unit_visibility = "active", include_blank_inspection_date = "0", ...rest } = args;
     const payload = {
         unit_visibility,
         include_blank_inspection_date,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/unit_inspection.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('unit_inspection.json', payload);
 }
 // MCP Tool Registration Function
 function registerUnitInspectionReportTool(server) {

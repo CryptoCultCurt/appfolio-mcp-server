@@ -1,16 +1,6 @@
-import { z } from "zod";
-import axios from 'axios';
-import Bottleneck from "bottleneck";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-const appfolioLimiter = new Bottleneck({
-  reservoir: 7, 
-  reservoirRefreshAmount: 7,
-  reservoirRefreshInterval: 15 * 1000, 
-  maxConcurrent: 1
-});
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 export type BalanceSheetArgs = {
   property_visibility?: "active" | "hidden" | "all";
@@ -31,10 +21,9 @@ export type BalanceSheetResult = {
   account_name: string;
   balance: string;
   account_number: string;
-}[]; // Assuming it's an array based on typical report structures
+}[];
 
 export async function getBalanceSheetReport(args: BalanceSheetArgs): Promise<BalanceSheetResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   if (!args.posted_on_to) {
     throw new Error('posted_on_to is required');
   }
@@ -53,13 +42,7 @@ export async function getBalanceSheetReport(args: BalanceSheetArgs): Promise<Bal
     ...rest
   };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/balance_sheet.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<BalanceSheetResult>('balance_sheet.json', payload);
 }
 
 export const balanceSheetInputSchema = z.object({

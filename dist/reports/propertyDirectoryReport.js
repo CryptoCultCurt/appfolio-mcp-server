@@ -1,43 +1,36 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.propertyDirectoryArgsSchema = void 0;
 exports.getPropertyDirectoryReport = getPropertyDirectoryReport;
 exports.registerPropertyDirectoryReportTool = registerPropertyDirectoryReportTool;
-const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 // Zod schema for Property Directory Report arguments
-const propertyDirectoryInputSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string(),
+exports.propertyDirectoryArgsSchema = zod_1.z.object({
+    property_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter properties by status. Defaults to "active"'),
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional(),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional(),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
-    }).optional(),
-    columns: zod_1.z.array(zod_1.z.string()).optional()
+    }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
+    columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
+// --- Property Directory Report Function ---
 async function getPropertyDirectoryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/property_directory.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, args, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('property_directory.json', payload);
 }
+// Registration function for the tool
 function registerPropertyDirectoryReportTool(server) {
-    server.tool("get_property_directory_report", "Returns property directory details for the given filters.", propertyDirectoryInputSchema.shape, async (args) => {
-        const data = await getPropertyDirectoryReport(args);
+    server.tool("get_property_directory_report", "Retrieves a property directory report with details about properties, including status, address, units count, and owner information.", exports.propertyDirectoryArgsSchema.shape, async (args) => {
+        const result = await getPropertyDirectoryReport(args);
         return {
             content: [
                 {
                     type: "text",
-                    text: JSON.stringify(data),
+                    text: JSON.stringify(result, null, 2),
                     mimeType: "application/json"
                 }
             ]

@@ -1,17 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.workOrderLaborSummaryInputSchema = void 0;
 exports.getWorkOrderLaborSummaryReport = getWorkOrderLaborSummaryReport;
 exports.registerWorkOrderLaborSummaryReportTool = registerWorkOrderLaborSummaryReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_1 = require("../appfolio"); // Assuming appfolioLimiter is exported from appfolio.ts or a central place
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 // --- Zod Schema for Work Order Labor Summary Report arguments ---
 exports.workOrderLaborSummaryInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active"'),
@@ -31,17 +24,12 @@ exports.workOrderLaborSummaryInputSchema = zod_1.z.object({
 });
 // --- Work Order Labor Summary Report Function ---
 async function getWorkOrderLaborSummaryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // Validation for labor_performed_from and labor_performed_to is handled by Zod schema
-    // Defaults are handled by Zod schema
-    const payload = { ...args };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.labor_performed_from || !args.labor_performed_to) {
+        throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
+    }
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('work_order_labor_summary.json', payload);
 }
 // --- MCP Tool Registration Function ---
 function registerWorkOrderLaborSummaryReportTool(server) {

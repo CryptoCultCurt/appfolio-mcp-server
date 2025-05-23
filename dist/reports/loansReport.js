@@ -1,15 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.loansArgsSchema = void 0;
 exports.getLoansReport = getLoansReport;
 exports.registerLoansReportTool = registerLoansReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Loans Report arguments
 exports.loansArgsSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active"'),
@@ -25,19 +20,12 @@ exports.loansArgsSchema = zod_1.z.object({
 });
 // --- Loans Report Function ---
 async function getLoansReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.reference_to) {
         throw new Error('Missing required argument: reference_to (format YYYY-MM-DD)');
     }
-    // Defaults are handled by Zod now, so direct destructuring is fine.
-    const payload = { ...args };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/loans.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('loans.json', payload);
 }
 // --- Register Loans Report Tool ---
 function registerLoansReportTool(server) {

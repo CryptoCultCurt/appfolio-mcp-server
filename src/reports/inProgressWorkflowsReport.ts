@@ -1,12 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
-
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Originally from src/appfolio.ts (lines 64-88)
 export type InProgressWorkflowsArgs = {
@@ -78,20 +72,10 @@ const inProgressWorkflowsArgsSchema = z.object({
 
 // Originally from src/appfolio.ts (function starting line 1517)
 export async function getInProgressWorkflowsReport(args: InProgressWorkflowsArgs): Promise<InProgressWorkflowsResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
-  }
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  // Defaults are now handled by Zod schema
-  const payload = args;
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/in_progress_workflows.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<InProgressWorkflowsResult>('in_progress_processes.json', payload);
 }
 
 // New registration function for MCP

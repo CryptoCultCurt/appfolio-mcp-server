@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getTenantLedgerReport = getTenantLedgerReport;
 exports.registerTenantLedgerReportTool = registerTenantLedgerReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Tenant Ledger Report arguments
 const tenantLedgerArgsSchema = zod_1.z.object({
     parties_ids: zod_1.z.object({
@@ -21,8 +16,7 @@ const tenantLedgerArgsSchema = zod_1.z.object({
 });
 // --- Tenant Ledger Report Function ---
 async function getTenantLedgerReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
+    // Validation logic still needed before API call
     if (!args.parties_ids?.occupancies_ids || args.parties_ids.occupancies_ids.length === 0) {
         throw new Error('Missing required argument: parties_ids.occupancies_ids must contain at least one ID');
     }
@@ -31,12 +25,7 @@ async function getTenantLedgerReport(args) {
     }
     const { transactions_shown = "tenant", ...rest } = args;
     const payload = { transactions_shown, ...rest };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/tenant_ledger.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('tenant_ledger.json', payload);
 }
 // --- Tenant Ledger Report Tool ---
 function registerTenantLedgerReportTool(server) {

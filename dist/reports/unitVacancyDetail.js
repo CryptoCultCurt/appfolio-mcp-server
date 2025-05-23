@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getUnitVacancyDetailReport = getUnitVacancyDetailReport;
 exports.registerUnitVacancyDetailReportTool = registerUnitVacancyDetailReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Unit Vacancy Detail Report arguments
 const unitVacancyDetailArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
@@ -17,22 +12,15 @@ const unitVacancyDetailArgsSchema = zod_1.z.object({
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
-    unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
+    property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     tags: zod_1.z.string().optional().describe('Optional. Filter by a comma-separated list of tags (e.g., "bbq,deck").'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 // --- Unit Vacancy Detail Report Function ---
 async function getUnitVacancyDetailReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const { unit_visibility = "active", ...rest } = args;
-    const payload = { unit_visibility, ...rest };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/unit_vacancy.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('unit_vacancy_detail.json', payload);
 }
 // MCP Tool Registration Function
 function registerUnitVacancyDetailReportTool(server) {

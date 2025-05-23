@@ -1,9 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Leasing Summary Report Types ---
 export type LeasingSummaryArgs = {
@@ -53,21 +50,14 @@ export const leasingSummaryArgsSchema = z.object({
 
 // --- Leasing Summary Report Function ---
 export async function getLeasingSummaryReport(args: LeasingSummaryArgs): Promise<LeasingSummaryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Validation for posted_on_from and posted_on_to is handled by Zod schema regex
+  if (!args.posted_on_from || !args.posted_on_to) {
+    throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
+  }
 
-  // Default for unit_visibility is handled by Zod schema
-  const payload = {
-    ...args
-  };
+  const { unit_visibility = "active", ...rest } = args;
+  const payload = { unit_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/leasing_summary.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<LeasingSummaryResult>('leasing_summary.json', payload);
 }
 
 // --- Register Leasing Summary Report Tool ---

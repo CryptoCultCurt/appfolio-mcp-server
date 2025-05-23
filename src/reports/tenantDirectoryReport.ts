@@ -1,9 +1,8 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-const { VHOST, USERNAME, PASSWORD } = process.env;
+// Type definitions for Tenant Directory Report
 
 export type TenantDirectoryArgs = {
   tenant_visibility?: "active" | "inactive" | "all";
@@ -125,17 +124,10 @@ const tenantDirectoryInputSchema = z.object({
 });
 
 export async function getTenantDirectoryReport(args: TenantDirectoryArgs): Promise<TenantDirectoryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
-  const payload = { ...args };
-  
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/tenant_directory.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
+  const { tenant_visibility = "active", ...rest } = args;
+  const payload = { tenant_visibility, ...rest };
 
-  return response.data;
+  return makeAppfolioApiCall<TenantDirectoryResult>('tenant_directory.json', payload);
 }
 
 export function registerTenantDirectoryReportTool(server: McpServer) {

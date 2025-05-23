@@ -1,14 +1,8 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from the main appfolio.ts
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Originally from src/appfolio.ts (line 21)
+// --- Budget Comparative Report Types ---
 export type BudgetComparativeArgs = {
   property_visibility?: string; // Zod default will handle this for tool input
   properties?: {
@@ -64,18 +58,14 @@ const budgetComparativeInputSchema = z.object({
 
 // Originally from src/appfolio.ts (function starting line 1602)
 export async function getBudgetComparativeReport(args: BudgetComparativeArgs): Promise<BudgetComparativeResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
+  if (!args.period_from || !args.period_to || !args.comparison_period_from || !args.comparison_period_to) {
+    throw new Error('Missing required arguments: period_from, period_to, comparison_period_from, and comparison_period_to (format YYYY-MM-DD)');
   }
-  // Zod schema handles the default for property_visibility, so args can be used directly.
-  const payload = args;
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/budget_comparative.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<BudgetComparativeResult>('budget_comparative.json', payload);
 }
 
 // New registration function for MCP

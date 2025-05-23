@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Trial Balance By Property Report Types ---
 export type TrialBalanceByPropertyArgs = {
@@ -50,7 +47,6 @@ const trialBalanceByPropertyArgsSchema = z.object({
 
 // --- Trial Balance By Property Report Function ---
 export async function getTrialBalanceByPropertyReport(args: TrialBalanceByPropertyArgs): Promise<TrialBalanceByPropertyResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   if (!args.posted_on_from || !args.posted_on_to) {
     throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
   }
@@ -58,13 +54,7 @@ export async function getTrialBalanceByPropertyReport(args: TrialBalanceByProper
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/trial_balance_by_property.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<TrialBalanceByPropertyResult>('trial_balance_by_property.json', payload);
 }
 
 // --- Trial Balance By Property Report Tool ---

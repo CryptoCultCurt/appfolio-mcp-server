@@ -1,9 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Loans Report Types ---
 export type LoansArgs = {
@@ -66,21 +63,14 @@ export const loansArgsSchema = z.object({
 
 // --- Loans Report Function ---
 export async function getLoansReport(args: LoansArgs): Promise<LoansResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   if (!args.reference_to) {
     throw new Error('Missing required argument: reference_to (format YYYY-MM-DD)');
   }
 
-  // Defaults are handled by Zod now, so direct destructuring is fine.
-  const payload = { ...args };
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/loans.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<LoansResult>('loans.json', payload);
 }
 
 // --- Register Loans Report Tool ---

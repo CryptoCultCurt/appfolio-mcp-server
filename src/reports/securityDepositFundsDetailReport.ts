@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
+// --- Security Deposit Funds Detail Report Types ---
 export type SecurityDepositFundsDetailArgs = {
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
@@ -141,17 +139,7 @@ const securityDepositFundsDetailInputSchema = z.object({
 });
 
 export async function getSecurityDepositFundsDetailReport(args: SecurityDepositFundsDetailArgs): Promise<SecurityDepositFundsDetailResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
-  const payload = { ...args };
-  
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/security_deposit_funds_detail.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<SecurityDepositFundsDetailResult>('security_deposit_funds_detail.json', args);
 }
 
 export function registerSecurityDepositFundsDetailReportTool(server: McpServer) {

@@ -1,11 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-import dotenv from 'dotenv';
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 export type AnnualBudgetCompArgsV2 = {
   property_visibility?: string;
@@ -20,6 +15,7 @@ export type AnnualBudgetCompArgsV2 = {
   gl_account_map_id?: string;
   level_of_detail?: string;
   columns?: string[];
+  periods: any;
 };
 
 export type AnnualBudgetComparativeResult = Array<{
@@ -50,22 +46,19 @@ export const annualBudgetComparativeInputSchema = z.object({
   additional_account_types: z.array(z.string()).optional().default([]).describe('Array of additional account types to include'),
   gl_account_map_id: z.string().optional().describe('Filter by GL account map ID'),
   level_of_detail: z.enum(["detail_view", "summary_view"]).optional().default("detail_view").describe('Specify the level of detail. Defaults to "detail_view"'),
-  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
+  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report'),
+  periods: z.any().describe('Periods')
 });
 
 export async function getAnnualBudgetComparativeReport(args: AnnualBudgetCompArgsV2): Promise<AnnualBudgetComparativeResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // occurred_on_to is marked as required in the Zod schema, so no need to check here
+  if (!args.periods) {
+    throw new Error('Missing required argument: periods');
+  }
 
-  // Defaults are handled by Zod schema
-  const payload = args;
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/annual_budget_comparative.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  return makeAppfolioApiCall<AnnualBudgetComparativeResult>('annual_budget_comparative.json', payload);
 }
 
 export function registerAnnualBudgetComparativeReportTool(server: McpServer) {

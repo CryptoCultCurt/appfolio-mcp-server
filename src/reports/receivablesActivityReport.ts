@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Receivables Activity Report Types ---
 export type ReceivablesActivityArgs = {
@@ -78,32 +75,23 @@ const receivablesActivityArgsSchema = z.object({
 
 // --- Receivables Activity Report Function ---
 export async function getReceivablesActivityReport(args: ReceivablesActivityArgs): Promise<ReceivablesActivityResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
     if (!args.receipt_date_from || !args.receipt_date_to) {
       throw new Error('Missing required arguments: receipt_date_from and receipt_date_to (format YYYY-MM-DD)');
     }
   
     const {
-      tenant_visibility = "active",
       property_visibility = "active",
       manually_entered_only = "0",
       ...rest
     } = args;
   
     const payload = {
-      tenant_visibility,
       property_visibility,
       manually_entered_only,
       ...rest
     };
   
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/receivables_activity.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
+    return makeAppfolioApiCall<ReceivablesActivityResult>('receivables_activity.json', payload);
   }
 
   // MCP Tool Registration Function

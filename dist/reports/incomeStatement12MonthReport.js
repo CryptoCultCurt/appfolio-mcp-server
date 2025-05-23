@@ -1,16 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIncomeStatement12MonthReport = getIncomeStatement12MonthReport;
 exports.registerIncomeStatement12MonthReportTool = registerIncomeStatement12MonthReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const dotenv_1 = __importDefault(require("dotenv"));
 const appfolio_1 = require("../appfolio");
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for 12 Month Income Statement Report arguments
 const incomeStatement12MonthArgsSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active"'),
@@ -30,8 +23,6 @@ const incomeStatement12MonthArgsSchema = zod_1.z.object({
 });
 // --- 12 Month Income Statement Report Function ---
 async function getIncomeStatement12MonthReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.posted_on_from || !args.posted_on_to) {
         throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM)');
     }
@@ -43,12 +34,7 @@ async function getIncomeStatement12MonthReport(args) {
         include_zero_balance_gl_accounts,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/twelve_month_income_statement.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('twelve_month_income_statement.json', payload);
 }
 // --- 12 Month Income Statement Report Tool ---
 function registerIncomeStatement12MonthReportTool(server) {

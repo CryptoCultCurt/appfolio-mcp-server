@@ -1,16 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getInProgressWorkflowsReport = getInProgressWorkflowsReport;
 exports.registerInProgressWorkflowsReportTool = registerInProgressWorkflowsReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const dotenv_1 = __importDefault(require("dotenv"));
 const appfolio_1 = require("../appfolio");
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Originally from src/index.ts (line 76), with defaults added
 const inProgressWorkflowsArgsSchema = zod_1.z.object({
     attachables: zod_1.z.object({
@@ -39,17 +32,9 @@ const inProgressWorkflowsArgsSchema = zod_1.z.object({
 });
 // Originally from src/appfolio.ts (function starting line 1517)
 async function getInProgressWorkflowsReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD) {
-        throw new Error('Missing AppFolio API credentials');
-    }
-    // Defaults are now handled by Zod schema
-    const payload = args;
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/in_progress_workflows.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('in_progress_processes.json', payload);
 }
 // New registration function for MCP
 function registerInProgressWorkflowsReportTool(server) {

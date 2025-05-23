@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter, getVendorLedgerReport } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Unit Inspection Report Types ---
 export type UnitInspectionArgs = {
@@ -60,27 +57,19 @@ const unitInspectionArgsSchema = z.object({
 
   // --- Unit Inspection Report Function ---
 export async function getUnitInspectionReport(args: UnitInspectionArgs): Promise<UnitInspectionResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
     const {
       unit_visibility = "active",
       include_blank_inspection_date = "0",
       ...rest
     } = args;
-  
+
     const payload = {
       unit_visibility,
       include_blank_inspection_date,
       ...rest
     };
-  
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/unit_inspection.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
+
+    return makeAppfolioApiCall<UnitInspectionResult>('unit_inspection.json', payload);
   }
 
   // MCP Tool Registration Function

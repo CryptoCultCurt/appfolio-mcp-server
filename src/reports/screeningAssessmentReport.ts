@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
+// --- Screening Assessment Report Types ---
 export type ScreeningAssessmentArgs = {
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
@@ -82,17 +80,10 @@ const screeningAssessmentInputSchema = z.object({
 });
 
 export async function getScreeningAssessmentReport(args: ScreeningAssessmentArgs): Promise<ScreeningAssessmentResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
-  const payload = { ...args };
-  
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/screening_assessment.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  return response.data;
+  return makeAppfolioApiCall<ScreeningAssessmentResult>('screening_assessment.json', payload);
 }
 
 export function registerScreeningAssessmentReportTool(server: McpServer) {

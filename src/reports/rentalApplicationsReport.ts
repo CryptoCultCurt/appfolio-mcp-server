@@ -1,10 +1,8 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
+// --- Rental Applications Report Types ---
 export type RentalApplicationsArgs = {
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
@@ -116,17 +114,14 @@ const rentalApplicationsInputSchema = z.object({
 });
 
 export async function getRentalApplicationsReport(args: RentalApplicationsArgs): Promise<RentalApplicationsResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
-  const payload = { ...args };
-  
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/rental_applications.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
+  if (!args.received_on_from || !args.received_on_to) {
+    throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
+  }
 
-  return response.data;
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<RentalApplicationsResult>('rental_applications.json', payload);
 }
 
 export function registerRentalApplicationsReportTool(server: McpServer) {

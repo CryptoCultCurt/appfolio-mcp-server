@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getReceivablesActivityReport = getReceivablesActivityReport;
 exports.registerReceivablesActivityReportTool = registerReceivablesActivityReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
 const appfolio_1 = require("../appfolio");
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Receivables Activity Report arguments
 const receivablesActivityArgsSchema = zod_1.z.object({
     tenant_visibility: zod_1.z.enum(["active", "inactive", "all"]).optional().describe('Filter tenants by status. Defaults to "active"'),
@@ -27,24 +22,16 @@ const receivablesActivityArgsSchema = zod_1.z.object({
 });
 // --- Receivables Activity Report Function ---
 async function getReceivablesActivityReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.receipt_date_from || !args.receipt_date_to) {
         throw new Error('Missing required arguments: receipt_date_from and receipt_date_to (format YYYY-MM-DD)');
     }
-    const { tenant_visibility = "active", property_visibility = "active", manually_entered_only = "0", ...rest } = args;
+    const { property_visibility = "active", manually_entered_only = "0", ...rest } = args;
     const payload = {
-        tenant_visibility,
         property_visibility,
         manually_entered_only,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/receivables_activity.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('receivables_activity.json', payload);
 }
 // MCP Tool Registration Function
 function registerReceivablesActivityReportTool(server) {

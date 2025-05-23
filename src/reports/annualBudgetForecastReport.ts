@@ -1,12 +1,8 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import dotenv from 'dotenv';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
+// --- Annual Budget Forecast Report Types ---
 export type AnnualBudgetForecastArgs = {
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
@@ -52,19 +48,14 @@ export const annualBudgetForecastInputSchema = z.object({
 });
 
 export async function getAnnualBudgetForecastReport(args: AnnualBudgetForecastArgs): Promise<AnnualBudgetForecastResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // period_from and period_to are marked as required in Zod schema
+  if (!args.period_from || !args.period_to) {
+    throw new Error('Missing required arguments: period_from and period_to (format YYYY-MM-DD)');
+  }
 
-  // Defaults are handled by Zod schema
-  const payload = args;
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/annual_budget_forecast.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<AnnualBudgetForecastResult>('annual_budget_forecast.json', payload);
 }
 
 export function registerAnnualBudgetForecastReportTool(server: McpServer) {

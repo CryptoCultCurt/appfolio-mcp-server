@@ -1,15 +1,10 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Type definitions moved from src/appfolio.ts
 export type VendorLedgerArgs = {
-  party_contact_info: {
-    company_id: string; // Required Vendor ID
-  };
+  vendor_id: string; // Required Vendor ID
   property_visibility?: "active" | "hidden" | "all";
   properties?: {
     properties_ids?: string[];
@@ -119,9 +114,7 @@ export type VendorLedgerResult = {
 
 // Zod schema moved from src/index.ts
 const vendorLedgerInputSchema = z.object({
-  party_contact_info: z.object({
-    company_id: z.string().describe('Required. The ID of the vendor (company).')
-  }).describe('Required. Specifies the vendor for the ledger report.'),
+  vendor_id: z.string().describe('Required. The ID of the vendor (company).'),
   property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active"'),
   properties: z.object({
     properties_ids: z.array(z.string()).optional().describe('Filter by specific property IDs'),
@@ -137,33 +130,14 @@ const vendorLedgerInputSchema = z.object({
 
 // Function moved from src/appfolio.ts
 export async function getVendorLedgerReport(args: VendorLedgerArgs): Promise<VendorLedgerResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  if (!args.party_contact_info?.company_id) {
-    throw new Error('Missing required argument: party_contact_info.company_id');
-  }
-  if (!args.occurred_on_from || !args.occurred_on_to) {
-    throw new Error('Missing required arguments: occurred_on_from and occurred_on_to (format YYYY-MM-DD)');
+  if (!args.vendor_id) {
+    throw new Error('Missing required argument: vendor_id');
   }
 
-  const {
-    property_visibility = "active",
-    reverse_transaction = "0",
-    ...rest
-  } = args;
+  const { occurred_on_from, occurred_on_to, ...rest } = args;
+  const payload = { occurred_on_from, occurred_on_to, ...rest };
 
-  const payload = {
-    property_visibility,
-    reverse_transaction,
-    ...rest
-  };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/vendor_ledger.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<VendorLedgerResult>('vendor_ledger.json', payload);
 }
 
 // MCP Tool Registration Function

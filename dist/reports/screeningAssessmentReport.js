@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getScreeningAssessmentReport = getScreeningAssessmentReport;
 exports.registerScreeningAssessmentReportTool = registerScreeningAssessmentReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 const screeningAssessmentInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active"),
     properties: zod_1.z.object({
@@ -24,15 +19,9 @@ const screeningAssessmentInputSchema = zod_1.z.object({
     columns: zod_1.z.array(zod_1.z.string()).optional()
 });
 async function getScreeningAssessmentReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const payload = { ...args };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/screening_assessment.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('screening_assessment.json', payload);
 }
 function registerScreeningAssessmentReportTool(server) {
     server.tool("get_screening_assessment_report", "Returns screening assessment report for the given filters.", screeningAssessmentInputSchema.shape, async (args, _extra) => {

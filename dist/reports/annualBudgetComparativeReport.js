@@ -1,17 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.annualBudgetComparativeInputSchema = void 0;
 exports.getAnnualBudgetComparativeReport = getAnnualBudgetComparativeReport;
 exports.registerAnnualBudgetComparativeReportTool = registerAnnualBudgetComparativeReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const appfolio_1 = require("../appfolio"); // Assuming appfolioLimiter is exported from appfolio.ts
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 exports.annualBudgetComparativeInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().optional().default("active").describe('Filter properties by status. Defaults to "active"'),
     properties: zod_1.z.object({
@@ -24,20 +17,16 @@ exports.annualBudgetComparativeInputSchema = zod_1.z.object({
     additional_account_types: zod_1.z.array(zod_1.z.string()).optional().default([]).describe('Array of additional account types to include'),
     gl_account_map_id: zod_1.z.string().optional().describe('Filter by GL account map ID'),
     level_of_detail: zod_1.z.enum(["detail_view", "summary_view"]).optional().default("detail_view").describe('Specify the level of detail. Defaults to "detail_view"'),
-    columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
+    columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report'),
+    periods: zod_1.z.any().describe('Periods')
 });
 async function getAnnualBudgetComparativeReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // occurred_on_to is marked as required in the Zod schema, so no need to check here
-    // Defaults are handled by Zod schema
-    const payload = args;
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/annual_budget_comparative.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.periods) {
+        throw new Error('Missing required argument: periods');
+    }
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('annual_budget_comparative.json', payload);
 }
 function registerAnnualBudgetComparativeReportTool(server) {
     server.tool("get_annual_budget_comparative_report", "Returns annual budget comparative report for the given filters.", exports.annualBudgetComparativeInputSchema.shape, async (args, _extra) => {

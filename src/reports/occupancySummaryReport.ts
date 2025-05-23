@@ -1,9 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Occupancy Summary Report Types ---
 export type OccupancySummaryArgs = {
@@ -14,7 +11,7 @@ export type OccupancySummaryArgs = {
     owners_ids?: string[];
   };
   unit_visibility?: "active" | "hidden" | "all";
-  as_of_to: string; // Required (YYYY-MM-DD)
+  as_of_date: string; // Required (YYYY-MM-DD)
   columns?: string[];
 };
 
@@ -48,27 +45,20 @@ export const occupancySummaryArgsSchema = z.object({
     owners_ids: z.array(z.string()).optional()
   }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
   unit_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
-  as_of_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The "as of" date for the report (YYYY-MM-DD). Required.'),
+  as_of_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The "as of" date for the report (YYYY-MM-DD). Required.'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 
 // --- Occupancy Summary Report Function ---
 export async function getOccupancySummaryReport(args: OccupancySummaryArgs): Promise<OccupancySummaryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  if (!args.as_of_to) {
-    throw new Error('Missing required argument: as_of_to (format YYYY-MM-DD)');
+  if (!args.as_of_date) {
+    throw new Error('Missing required argument: as_of_date (format YYYY-MM-DD)');
   }
 
-  // Defaults are handled by Zod now
-  const payload = { ...args };
+  const { unit_visibility = "active", ...rest } = args;
+  const payload = { unit_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/occupancy_summary.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<OccupancySummaryResult>('occupancy_summary.json', payload);
 }
 
 // --- Register Occupancy Summary Report Tool ---

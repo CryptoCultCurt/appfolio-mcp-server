@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getGuestCardInquiriesReport = getGuestCardInquiriesReport;
 exports.registerGuestCardInquiriesReportTool = registerGuestCardInquiriesReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema based on src/index.ts (Step 163) and function defaults (Step 153)
 const guestCardInquiriesInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().default("active"),
@@ -31,16 +26,12 @@ const guestCardInquiriesInputSchema = zod_1.z.object({
 });
 // Function definition from src/appfolio.ts (Step 153)
 async function getGuestCardInquiriesReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // Defaults are now handled by the Zod schema
-    const payload = { ...args };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/guest_card_inquiries.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.received_on_from || !args.received_on_to) {
+        throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
+    }
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('guest_card_inquiries.json', payload);
 }
 // MCP Tool Registration Function
 function registerGuestCardInquiriesReportTool(server) {

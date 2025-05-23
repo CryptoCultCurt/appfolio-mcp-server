@@ -1,11 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- 12 Month Cash Flow Report Types ---
 export type Cashflow12MonthArgs = {
@@ -55,7 +50,6 @@ export type Cashflow12MonthArgs = {
 
   // --- 12 Month Cash Flow Report Function ---
 export async function getCashflow12MonthReport(args: Cashflow12MonthArgs): Promise<Cashflow12MonthResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
     if (!args.posted_on_from || !args.posted_on_to) {
       throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM)');
     }
@@ -76,13 +70,7 @@ export async function getCashflow12MonthReport(args: Cashflow12MonthArgs): Promi
       ...rest
     };
   
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/twelve_month_cash_flow.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
+    return makeAppfolioApiCall<Cashflow12MonthResult>('twelve_month_cash_flow.json', payload);
   }
 
   export function registerCashflow12MonthReportTool(server: McpServer) {

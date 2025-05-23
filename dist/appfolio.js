@@ -3,9 +3,11 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getUnitInspectionReport = exports.getWorkOrderReport = exports.getVendorDirectoryReport = exports.getUnitVacancyDetailReport = exports.getUnitDirectoryReport = exports.getIncomeStatement12MonthReport = exports.getCashflow12MonthReport = exports.getPropertyDirectoryReport = exports.getTenantLedgerReport = exports.getTenantDirectoryReport = exports.getSecurityDepositFundsDetailReport = exports.getScreeningAssessmentReport = exports.getResidentFinancialActivityReport = exports.getRentalApplicationsReport = exports.getVendorLedgerReport = exports.getRenewalSummaryReport = exports.getReceivablesActivityReport = exports.getPropertySourceTrackingReport = exports.getPropertyPerformanceReport = exports.getOwnerLeasingReport = exports.getOccupancySummaryReport = exports.getLoansReport = exports.getOwnerDirectoryReport = exports.getLeasingSummaryReport = exports.getLeaseExpirationDetailByMonthReport = exports.getCancelledWorkflowsReport = exports.getWorkOrderLaborSummaryReport = exports.getIncomeStatementDateRangeReport = exports.getInProgressWorkflowsReport = exports.getFixedAssetsReport = exports.getCompletedWorkflowsReport = exports.getChartOfAccountsReport = exports.getBudgetComparativeReport = exports.getAgedReceivablesDetailReport = exports.getBalanceSheetReport = exports.getExpenseDistributionReport = exports.delinquencyColumnsList = exports.getDelinquencyAsOfReport = exports.getAnnualBudgetForecastReport = exports.getAnnualBudgetComparativeReport = exports.getLeasingFunnelPerformanceReport = exports.getGuestCardInquiriesReport = exports.getRentRollItemizedReport = exports.getAgedPayablesSummaryReport = exports.getAccountTotalsReport = exports.getCashflowReport = exports.appfolioLimiter = void 0;
+exports.getUnitInspectionReport = exports.getWorkOrderReport = exports.getVendorDirectoryReport = exports.getUnitVacancyDetailReport = exports.getUnitDirectoryReport = exports.getIncomeStatement12MonthReport = exports.getCashflow12MonthReport = exports.getPropertyDirectoryReport = exports.getTenantLedgerReport = exports.getTenantDirectoryReport = exports.getSecurityDepositFundsDetailReport = exports.getScreeningAssessmentReport = exports.getResidentFinancialActivityReport = exports.getRentalApplicationsReport = exports.getVendorLedgerReport = exports.getRenewalSummaryReport = exports.getReceivablesActivityReport = exports.getPropertySourceTrackingReport = exports.getPropertyPerformanceReport = exports.getOwnerLeasingReport = exports.getOccupancySummaryReport = exports.getLoansReport = exports.getOwnerDirectoryReport = exports.getLeasingSummaryReport = exports.getLeaseExpirationDetailReport = exports.getCancelledWorkflowsReport = exports.getWorkOrderLaborSummaryReport = exports.getIncomeStatementDateRangeReport = exports.getInProgressWorkflowsReport = exports.getFixedAssetsReport = exports.getCompletedWorkflowsReport = exports.getChartOfAccountsReport = exports.getBudgetComparativeReport = exports.getAgedReceivablesDetailReport = exports.getBalanceSheetReport = exports.getExpenseDistributionReport = exports.delinquencyColumnsList = exports.getDelinquencyAsOfReport = exports.getAnnualBudgetForecastReport = exports.getAnnualBudgetComparativeReport = exports.getLeasingFunnelPerformanceReport = exports.getGuestCardInquiriesReport = exports.getRentRollItemizedReport = exports.getAgedPayablesSummaryReport = exports.getAccountTotalsReport = exports.getCashflowReport = exports.appfolioLimiter = void 0;
+exports.makeAppfolioApiCall = makeAppfolioApiCall;
 const dotenv_1 = __importDefault(require("dotenv"));
 const bottleneck_1 = __importDefault(require("bottleneck"));
+const axios_1 = __importDefault(require("axios")); // Import axios
 dotenv_1.default.config();
 const cashflowReport_1 = require("./reports/cashflowReport");
 Object.defineProperty(exports, "getCashflowReport", { enumerable: true, get: function () { return cashflowReport_1.getCashflowReport; } });
@@ -49,7 +51,7 @@ Object.defineProperty(exports, "getWorkOrderLaborSummaryReport", { enumerable: t
 const cancelledWorkflowsReport_1 = require("./reports/cancelledWorkflowsReport");
 Object.defineProperty(exports, "getCancelledWorkflowsReport", { enumerable: true, get: function () { return cancelledWorkflowsReport_1.getCancelledWorkflowsReport; } });
 const leaseExpirationDetailReport_1 = require("./reports/leaseExpirationDetailReport");
-Object.defineProperty(exports, "getLeaseExpirationDetailByMonthReport", { enumerable: true, get: function () { return leaseExpirationDetailReport_1.getLeaseExpirationDetailByMonthReport; } });
+Object.defineProperty(exports, "getLeaseExpirationDetailReport", { enumerable: true, get: function () { return leaseExpirationDetailReport_1.getLeaseExpirationDetailReport; } });
 const leasingSummaryReport_1 = require("./reports/leasingSummaryReport");
 Object.defineProperty(exports, "getLeasingSummaryReport", { enumerable: true, get: function () { return leasingSummaryReport_1.getLeasingSummaryReport; } });
 const ownerDirectoryReport_1 = require("./reports/ownerDirectoryReport");
@@ -105,3 +107,16 @@ exports.appfolioLimiter = new bottleneck_1.default({
     maxConcurrent: 10,
     minTime: 100 // 10 requests per second, also helps with reservoir not depleting too fast
 });
+// Centralized AppFolio API call function with shared rate limiting and authentication
+async function makeAppfolioApiCall(endpoint, payload) {
+    const { VHOST, USERNAME, PASSWORD } = process.env;
+    if (!VHOST || !USERNAME || !PASSWORD) {
+        throw new Error('Missing AppFolio API credentials');
+    }
+    const url = `https://${VHOST}.appfolio.com/api/v2/reports/${endpoint}`;
+    const response = await exports.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
+        auth: { username: USERNAME, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+    }));
+    return response.data;
+}

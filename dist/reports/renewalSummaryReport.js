@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getRenewalSummaryReport = getRenewalSummaryReport;
 exports.registerRenewalSummaryReportTool = registerRenewalSummaryReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Renewal Summary Report arguments
 const renewalStatusSchema = zod_1.z.enum(["all", "awaiting_response", "countersigned", "pending", "skipped", "notice_to_vacate"]);
 const renewalSummaryArgsSchema = zod_1.z.object({
@@ -27,8 +22,6 @@ const renewalSummaryArgsSchema = zod_1.z.object({
 });
 // --- Renewal Summary Report Function ---
 async function getRenewalSummaryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.start_on_from || !args.start_on_to) {
         throw new Error('Missing required arguments: start_on_from and start_on_to (format YYYY-MM)');
     }
@@ -39,12 +32,7 @@ async function getRenewalSummaryReport(args) {
         include_tenant_transfers,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/renewal_summary.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('renewal_summary.json', payload);
 }
 // --- Renewal Summary Report Tool ---
 function registerRenewalSummaryReportTool(server) {

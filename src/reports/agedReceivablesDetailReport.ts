@@ -1,14 +1,8 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'; 
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-dotenv.config(); // Ensure environment variables are loaded
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Originally from src/appfolio.ts (lines 19-36)
+// --- Aged Receivables Detail Report Types ---
 export type AgedReceivablesDetailArgs = {
   property_visibility?: string; // Zod default will handle this for tool input
   properties?: {
@@ -26,6 +20,7 @@ export type AgedReceivablesDetailArgs = {
   occurred_on_to: string;
   gl_account_map_id?: string;
   columns?: string[];
+  as_of: string;
 };
 
 // Originally from src/appfolio.ts (lines 38-81)
@@ -92,23 +87,19 @@ const agedReceivablesDetailInputSchema = z.object({
   occurred_on_to: z.string(),
   gl_account_map_id: z.string().optional(),
   columns: z.array(z.string()).optional(),
+  as_of: z.string(),
 });
 
 // Originally from src/appfolio.ts (function starting line 1664)
 export async function getAgedReceivablesDetailReport(args: AgedReceivablesDetailArgs): Promise<AgedReceivablesDetailResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
+  if (!args.as_of) {
+    throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
   }
-  
-  // Zod schema handles the default for property_visibility, so args can be used directly.
-  const payload = args;
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/aged_receivables_detail.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<AgedReceivablesDetailResult>('aged_receivables_detail.json', payload);
 }
 
 // New registration function for MCP

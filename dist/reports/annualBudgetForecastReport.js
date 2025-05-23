@@ -1,17 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.annualBudgetForecastInputSchema = void 0;
 exports.getAnnualBudgetForecastReport = getAnnualBudgetForecastReport;
 exports.registerAnnualBudgetForecastReportTool = registerAnnualBudgetForecastReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
 exports.annualBudgetForecastInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active"),
     properties: zod_1.z.object({
@@ -27,17 +20,12 @@ exports.annualBudgetForecastInputSchema = zod_1.z.object({
     columns: zod_1.z.array(zod_1.z.string()).optional(),
 });
 async function getAnnualBudgetForecastReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // period_from and period_to are marked as required in Zod schema
-    // Defaults are handled by Zod schema
-    const payload = args;
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/annual_budget_forecast.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.period_from || !args.period_to) {
+        throw new Error('Missing required arguments: period_from and period_to (format YYYY-MM-DD)');
+    }
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('annual_budget_forecast.json', payload);
 }
 function registerAnnualBudgetForecastReportTool(server) {
     server.tool("get_annual_budget_forecast_report", "Returns annual budget forecast report for the given filters.", exports.annualBudgetForecastInputSchema.shape, async (args, _extra) => {

@@ -1,34 +1,16 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAccountTotalsReport = getAccountTotalsReport;
 exports.registerAccountTotalsReportTool = registerAccountTotalsReportTool;
-const axios_1 = __importDefault(require("axios"));
-const dotenv_1 = __importDefault(require("dotenv"));
 const zod_1 = require("zod");
-const appfolio_1 = require("../appfolio"); // Assuming this will be correctly exported
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 async function getAccountTotalsReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // Default for gl_account_ids is handled in the server.tool registration or here if preferred.
-    // The original server.tool had: { ...args, gl_account_ids: args.gl_account_ids ?? "1" }
-    // We'll keep the core function clean and let the registration logic handle defaults if possible,
-    // or apply it here if it's intrinsic to the function's direct use.
-    // For now, assuming args comes with gl_account_ids potentially undefined, and API handles it or schema default works.
+    // Handle default for gl_account_ids
     const payload = { ...args };
     if (args.gl_account_ids === undefined) {
         payload.gl_account_ids = "1"; // Explicitly set default if not provided, matching original server.tool logic
     }
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/account_totals.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('account_totals.json', payload);
 }
 const accountTotalsInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string(),

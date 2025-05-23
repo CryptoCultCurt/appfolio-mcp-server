@@ -1,12 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
-
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- 12 Month Income Statement Report Types ---
 export type IncomeStatement12MonthArgs = {
@@ -56,7 +50,6 @@ const incomeStatement12MonthArgsSchema = z.object({
 
   // --- 12 Month Income Statement Report Function ---
 export async function getIncomeStatement12MonthReport(args: IncomeStatement12MonthArgs): Promise<IncomeStatement12MonthResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
     if (!args.posted_on_from || !args.posted_on_to) {
       throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM)');
     }
@@ -76,14 +69,8 @@ export async function getIncomeStatement12MonthReport(args: IncomeStatement12Mon
       include_zero_balance_gl_accounts,
       ...rest
     };
-  
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/twelve_month_income_statement.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
+
+    return makeAppfolioApiCall<IncomeStatement12MonthResult>('twelve_month_income_statement.json', payload);
   }
 
   // --- 12 Month Income Statement Report Tool ---

@@ -1,11 +1,6 @@
-import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import axios from "axios";
-import dotenv from "dotenv";
-import { appfolioLimiter } from "../appfolio"; // Assuming appfolioLimiter is exported from appfolio.ts or a central place
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Work Order Labor Summary Report Types ---
 export type WorkOrderLaborSummaryArgs = {
@@ -74,20 +69,15 @@ export const workOrderLaborSummaryInputSchema = z.object({
 });
 
 // --- Work Order Labor Summary Report Function ---
-export async function getWorkOrderLaborSummaryReport(args: z.infer<typeof workOrderLaborSummaryInputSchema>): Promise<WorkOrderLaborSummaryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Validation for labor_performed_from and labor_performed_to is handled by Zod schema
+export async function getWorkOrderLaborSummaryReport(args: WorkOrderLaborSummaryArgs): Promise<WorkOrderLaborSummaryResult> {
+  if (!args.labor_performed_from || !args.labor_performed_to) {
+    throw new Error('Missing required arguments: labor_performed_from and labor_performed_to (format YYYY-MM-DD)');
+  }
 
-  // Defaults are handled by Zod schema
-  const payload = { ...args };
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order_labor_summary.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<WorkOrderLaborSummaryResult>('work_order_labor_summary.json', payload);
 }
 
 // --- MCP Tool Registration Function ---
@@ -96,7 +86,7 @@ export function registerWorkOrderLaborSummaryReportTool(server: McpServer) {
     "get_work_order_labor_summary_report",
     "Returns a report detailing work order labor based on specified filters.",
     workOrderLaborSummaryInputSchema.shape,
-    async (args: z.infer<typeof workOrderLaborSummaryInputSchema>, _extra: unknown) => {
+    async (args: WorkOrderLaborSummaryArgs, _extra: unknown) => {
       const data = await getWorkOrderLaborSummaryReport(args);
       return {
         content: [

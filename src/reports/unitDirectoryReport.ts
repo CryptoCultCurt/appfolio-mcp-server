@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter, getVendorLedgerReport } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Unit Directory Report Types ---
 export type UnitDirectoryArgs = {
@@ -82,19 +79,11 @@ const unitDirectoryArgsSchema = z.object({
 
 // --- Unit Directory Report Function ---
 export async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<UnitDirectoryResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  
     const { unit_visibility = "active", ...rest } = args;
     const payload = { unit_visibility, ...rest };
   
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/unit_directory.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
-  }
+    return makeAppfolioApiCall<UnitDirectoryResult>('unit_directory.json', payload);
+}
 
   // MCP Tool Registration Function
   export function registerUnitDirectoryReportTool(server: McpServer) {

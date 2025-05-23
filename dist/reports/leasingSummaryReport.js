@@ -1,15 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.leasingSummaryArgsSchema = void 0;
 exports.getLeasingSummaryReport = getLeasingSummaryReport;
 exports.registerLeasingSummaryReportTool = registerLeasingSummaryReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const appfolio_1 = require("../appfolio"); // Assuming appfolioLimiter is exported from appfolio.ts
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 // Zod schema for Leasing Summary Report arguments
 exports.leasingSummaryArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
@@ -25,19 +20,12 @@ exports.leasingSummaryArgsSchema = zod_1.z.object({
 });
 // --- Leasing Summary Report Function ---
 async function getLeasingSummaryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    // Validation for posted_on_from and posted_on_to is handled by Zod schema regex
-    // Default for unit_visibility is handled by Zod schema
-    const payload = {
-        ...args
-    };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/leasing_summary.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    if (!args.posted_on_from || !args.posted_on_to) {
+        throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
+    }
+    const { unit_visibility = "active", ...rest } = args;
+    const payload = { unit_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('leasing_summary.json', payload);
 }
 // --- Register Leasing Summary Report Tool ---
 function registerLeasingSummaryReportTool(server) {

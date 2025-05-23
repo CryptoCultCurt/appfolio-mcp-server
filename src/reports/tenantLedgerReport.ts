@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Tenant Ledger Report Types ---
 export type TenantLedgerArgs = {
@@ -42,25 +39,19 @@ const tenantLedgerArgsSchema = z.object({
 
 // --- Tenant Ledger Report Function ---
 export async function getTenantLedgerReport(args: TenantLedgerArgs): Promise<TenantLedgerResult> {
-    if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-    if (!args.parties_ids?.occupancies_ids || args.parties_ids.occupancies_ids.length === 0) {
-      throw new Error('Missing required argument: parties_ids.occupancies_ids must contain at least one ID');
-    }
-    if (!args.occurred_on_from || !args.occurred_on_to) {
-      throw new Error('Missing required arguments: occurred_on_from and occurred_on_to (format YYYY-MM-DD)');
-    }
-  
-    const { transactions_shown = "tenant", ...rest } = args;
-    const payload = { transactions_shown, ...rest };
-  
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/tenant_ledger.json`;
-    const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    }));
-  
-    return response.data;
+  // Validation logic still needed before API call
+  if (!args.parties_ids?.occupancies_ids || args.parties_ids.occupancies_ids.length === 0) {
+    throw new Error('Missing required argument: parties_ids.occupancies_ids must contain at least one ID');
   }
+  if (!args.occurred_on_from || !args.occurred_on_to) {
+    throw new Error('Missing required arguments: occurred_on_from and occurred_on_to (format YYYY-MM-DD)');
+  }
+
+  const { transactions_shown = "tenant", ...rest } = args;
+  const payload = { transactions_shown, ...rest };
+
+  return makeAppfolioApiCall<TenantLedgerResult>('tenant_ledger.json', payload);
+}
 
   // --- Tenant Ledger Report Tool ---
   export function registerTenantLedgerReportTool(server: McpServer) {

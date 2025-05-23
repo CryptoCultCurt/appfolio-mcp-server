@@ -1,15 +1,10 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ownerLeasingArgsSchema = void 0;
 exports.getOwnerLeasingReport = getOwnerLeasingReport;
 exports.registerOwnerLeasingReportTool = registerOwnerLeasingReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Owner Leasing Report arguments
 exports.ownerLeasingArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
@@ -26,19 +21,11 @@ exports.ownerLeasingArgsSchema = zod_1.z.object({
 });
 // --- Owner Leasing Report Function ---
 async function getOwnerLeasingReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.received_on_from || !args.received_on_to) {
         throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
     }
-    // Defaults are handled by Zod now
-    const payload = { ...args };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/owner_leasing.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const payload = args;
+    return (0, appfolio_1.makeAppfolioApiCall)('owner_leasing.json', payload);
 }
 // --- Register Owner Leasing Report Tool ---
 function registerOwnerLeasingReportTool(server) {

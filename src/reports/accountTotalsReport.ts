@@ -1,12 +1,6 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { appfolioLimiter } from '../appfolio'; // Assuming this will be correctly exported
-
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 export type AccountTotalsReportArgs = {
   property_visibility: string;
@@ -41,23 +35,13 @@ export type AccountTotalsReportResult = {
 };
 
 export async function getAccountTotalsReport(args: AccountTotalsReportArgs): Promise<AccountTotalsReportResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Default for gl_account_ids is handled in the server.tool registration or here if preferred.
-  // The original server.tool had: { ...args, gl_account_ids: args.gl_account_ids ?? "1" }
-  // We'll keep the core function clean and let the registration logic handle defaults if possible,
-  // or apply it here if it's intrinsic to the function's direct use.
-  // For now, assuming args comes with gl_account_ids potentially undefined, and API handles it or schema default works.
+  // Handle default for gl_account_ids
   const payload = { ...args };
   if (args.gl_account_ids === undefined) {
     payload.gl_account_ids = "1"; // Explicitly set default if not provided, matching original server.tool logic
   }
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/account_totals.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  return makeAppfolioApiCall<AccountTotalsReportResult>('account_totals.json', payload);
 }
 
 const accountTotalsInputSchema = z.object({

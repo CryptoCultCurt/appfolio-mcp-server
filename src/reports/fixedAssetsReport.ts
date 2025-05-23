@@ -1,14 +1,8 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Originally from src/appfolio.ts (lines 63-73)
+// --- Fixed Assets Report Types ---
 export type FixedAssetsArgs = {
   property_visibility?: "active" | "hidden" | "all";
   unit_ids?: string[];
@@ -21,7 +15,7 @@ export type FixedAssetsArgs = {
   columns?: string[];
 };
 
-// Originally from src/appfolio.ts (lines 75-90)
+// --- Fixed Assets Report Result ---
 export type FixedAssetsResult = {
   results: Array<{
     asset_id: string;
@@ -39,7 +33,7 @@ export type FixedAssetsResult = {
   next_page_url: string;
 };
 
-// Originally from src/index.ts (line 75), with defaults added
+// --- Fixed Assets Report Args Schema ---
 const fixedAssetsArgsSchema = z.object({
   property_visibility: z.enum(["active", "hidden", "all"]).default("active").optional().describe('Filter properties by status. Defaults to "active"'),
   unit_ids: z.array(z.string()).optional().describe('Array of unit IDs to filter by'),
@@ -52,29 +46,19 @@ const fixedAssetsArgsSchema = z.object({
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 
-// Originally from src/appfolio.ts (function starting line 1546)
+// --- Fixed Assets Report Function ---
 export async function getFixedAssetsReport(args: FixedAssetsArgs): Promise<FixedAssetsResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
-  }
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  // Defaults are now handled by Zod schema
-  const payload = args;
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/fixed_assets.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<FixedAssetsResult>('fixed_assets.json', payload);
 }
 
-// New registration function for MCP
+// --- Fixed Assets Report Tool Registration ---
 export function registerFixedAssetsReportTool(server: McpServer) {
   server.tool(
     "get_fixed_assets_report",
-    "Returns a report of fixed assets based on the provided filters.", // Description from original registration
+    "Returns a report of fixed assets based on the provided filters.",
     fixedAssetsArgsSchema.shape,
     async (toolArgs: z.infer<typeof fixedAssetsArgsSchema>) => {
       const data = await getFixedAssetsReport(toolArgs as FixedAssetsArgs);

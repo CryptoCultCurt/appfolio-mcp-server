@@ -1,9 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Owner Directory Report Types ---
 export type OwnerDirectoryReportPropertiesArgs = {
@@ -81,21 +78,8 @@ export const ownerDirectoryArgsSchema = z.object({
 });
 
 // --- Owner Directory Report Function ---
-export async function getOwnerDirectoryReport(args: OwnerDirectoryReportArgs): Promise<OwnerDirectoryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-
-  const payload = {
-    ...args
-  };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/owner_directory.json`;
-  
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+export async function getOwnerDirectoryReport(args: z.infer<typeof ownerDirectoryArgsSchema>): Promise<OwnerDirectoryResult> {
+  return makeAppfolioApiCall<OwnerDirectoryResult>('owner_directory.json', args);
 }
 
 // --- Register Owner Directory Report Tool ---
@@ -104,7 +88,7 @@ export function registerOwnerDirectoryReportTool(server: McpServer) {
     "get_owner_directory_report",
     "Returns an owner directory report based on specified filters.",
     ownerDirectoryArgsSchema.shape,
-    async (args: OwnerDirectoryReportArgs) => {
+    async (args: z.infer<typeof ownerDirectoryArgsSchema>) => {
       const data = await getOwnerDirectoryReport(args);
       return {
         content: [

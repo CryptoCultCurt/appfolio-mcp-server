@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Property Performance Report Types ---
 export type PropertyPerformanceArgs = {
@@ -15,8 +12,8 @@ export type PropertyPerformanceArgs = {
     owners_ids?: string[];
   };
   gl_account_ids?: string[];
-  posted_on_from: string; 
-  posted_on_to: string; 
+  period_from: string; 
+  period_to: string; 
   columns?: string[];
 };
 
@@ -51,25 +48,21 @@ export const propertyPerformanceArgsSchema = z.object({
     owners_ids: z.array(z.string()).optional()
   }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
   gl_account_ids: z.array(z.string()).optional().describe('Filter results by specific GL Account IDs'),
-  posted_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
-  posted_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
+  period_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
+  period_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 
 // --- Property Performance Report Function ---
 export async function getPropertyPerformanceReport(args: PropertyPerformanceArgs): Promise<PropertyPerformanceResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Validation for posted_on_from and posted_on_to is now handled by Zod schema
+  if (!args.period_from || !args.period_to) {
+    throw new Error('Missing required arguments: period_from and period_to (format YYYY-MM-DD)');
+  }
 
-  const payload = { ...args };
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/property_performance.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<PropertyPerformanceResult>('property_performance.json', payload);
 }
 
 export function registerPropertyPerformanceReportTool(server: McpServer) {

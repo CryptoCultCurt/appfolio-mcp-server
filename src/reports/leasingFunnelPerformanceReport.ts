@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Type definitions based on src/appfolio.ts (Step 180)
 export type LeasingFunnelPerformanceArgs = {
@@ -14,8 +11,8 @@ export type LeasingFunnelPerformanceArgs = {
     portfolios_ids?: string[];
     owners_ids?: string[];
   };
-  received_on_from: string; 
-  received_on_to: string;   
+  date_from: string; 
+  date_to: string;   
   assigned_user_visibility?: string; 
   assigned_user?: string;            
   columns?: string[];
@@ -55,8 +52,8 @@ const leasingFunnelPerformanceInputSchema = z.object({
     portfolios_ids: z.array(z.string()).optional(),
     owners_ids: z.array(z.string()).optional(),
   }).optional(),
-  received_on_from: z.string(),
-  received_on_to: z.string(),
+  date_from: z.string(),
+  date_to: z.string(),
   assigned_user_visibility: z.string().default("active"),
   assigned_user: z.string().default("All"),
   columns: z.array(z.string()).optional(),
@@ -64,15 +61,14 @@ const leasingFunnelPerformanceInputSchema = z.object({
 
 // Function definition from src/appfolio.ts (Step 177)
 export async function getLeasingFunnelPerformanceReport(args: LeasingFunnelPerformanceArgs): Promise<LeasingFunnelPerformanceResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // Defaults are now handled by the Zod schema
-  const payload = { ...args };
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/leasing_funnel_performance.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  if (!args.date_from || !args.date_to) {
+    throw new Error('Missing required arguments: date_from and date_to (format YYYY-MM-DD)');
+  }
+
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<LeasingFunnelPerformanceResult>('leasing_funnel_performance.json', payload);
 }
 
 // MCP Tool Registration Function

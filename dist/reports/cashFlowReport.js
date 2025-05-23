@@ -1,25 +1,11 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getCashflowReport = getCashflowReport;
 exports.registerCashflowReportTool = registerCashflowReportTool;
-const axios_1 = __importDefault(require("axios"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_1 = require("../appfolio");
 const zod_1 = require("zod");
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 async function getCashflowReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/cash_flow_detail.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, args, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('cash_flow_detail.json', args);
 }
 // Zod schema for Cash Flow Report arguments
 const cashflowInputSchema = zod_1.z.object({

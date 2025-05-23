@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Type definitions copied from src/appfolio.ts
 export type RentRollItemizedArgs = {
@@ -16,7 +13,7 @@ export type RentRollItemizedArgs = {
   unit_visibility?: string; // Default handled by Zod schema
   tags?: string;
   gl_account_ids?: string[];
-  as_of_to: string;
+  as_of_date: string;
   columns?: string[];
 };
 
@@ -87,21 +84,20 @@ const rentRollItemizedInputSchema = z.object({
   unit_visibility: z.string().default("active"), // Defaulting to active
   tags: z.string().optional(),
   gl_account_ids: z.array(z.string()).optional(),
-  as_of_to: z.string(),
+  as_of_date: z.string(),
   columns: z.array(z.string()).optional(),
 });
 
 // Function definition copied from src/appfolio.ts
 export async function getRentRollItemizedReport(args: RentRollItemizedArgs): Promise<RentRollItemizedResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // The Zod schema now handles the default for unit_visibility
-  const payload = { ...args };
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/rent_roll_itemized.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  if (!args.as_of_date) {
+    throw new Error('Missing required argument: as_of_date (format YYYY-MM-DD)');
+  }
+
+  const { unit_visibility = "active", ...rest } = args;
+  const payload = { unit_visibility, ...rest };
+
+  return makeAppfolioApiCall<RentRollItemizedResult>('rent_roll_itemized.json', payload);
 }
 
 // MCP Tool Registration Function

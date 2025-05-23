@@ -1,14 +1,11 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Zod schema for Lease Expiration Detail By Month Report arguments
 export const leaseExpirationDetailArgsSchema = z.object({
+  from_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
+  to_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
   properties: z.object({
     properties_ids: z.array(z.string()).optional(),
     property_groups_ids: z.array(z.string()).optional(),
@@ -18,8 +15,6 @@ export const leaseExpirationDetailArgsSchema = z.object({
   unit_visibility: z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active"'),
   tags: z.string().optional().describe('Filter by unit tags (comma-separated string)'),
   filter_lease_date_range_by: z.enum(["Lease Expiration Date", "Lease Start Date", "Move-in Date"]).default("Lease Expiration Date").describe('Which date field to use for the date range filter. Defaults to "Lease Expiration Date"'),
-  ends_on_from: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The start month for the reporting period (YYYY-MM). Required.'),
-  ends_on_to: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The end month for the reporting period (YYYY-MM). Required.'),
   exclude_occupancies_with_move_out: z.enum(["0", "1"]).default("0").describe('Exclude occupancies that have a move-out date. Defaults to "0" (false)'),
   exclude_month_to_month: z.enum(["0", "1"]).default("0").describe('Exclude occupancies that are month-to-month. Defaults to "0" (false)'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
@@ -75,20 +70,15 @@ export type LeaseExpirationDetailResult = {
 };
 
 // --- Lease Expiration Detail By Month Report Function ---
-export async function getLeaseExpirationDetailByMonthReport(args: LeaseExpirationDetailArgs): Promise<LeaseExpirationDetailResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // ends_on_from and ends_on_to are required by schema, no need to check here
+export async function getLeaseExpirationDetailReport(args: LeaseExpirationDetailArgs): Promise<LeaseExpirationDetailResult> {
+  if (!args.from_date || !args.to_date) {
+    throw new Error('Missing required arguments: from_date and to_date (format YYYY-MM-DD)');
+  }
 
-  // Defaults are handled by Zod schema now
-  const payload = { ...args };
+  const { unit_visibility = "active", ...rest } = args;
+  const payload = { unit_visibility, ...rest };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/lease_expiration_detail.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<LeaseExpirationDetailResult>('lease_expiration_detail.json', payload);
 }
 
 // Registration function for the tool
@@ -98,7 +88,7 @@ export function registerLeaseExpirationDetailReportTool(server: McpServer) {
     "Retrieves a report detailing lease expirations by month, filterable by properties, date range, and other criteria.",
     leaseExpirationDetailArgsSchema.shape,
     async (args: LeaseExpirationDetailArgs) => {
-      const result = await getLeaseExpirationDetailByMonthReport(args);
+      const result = await getLeaseExpirationDetailReport(args);
       return {
         content: [
           {

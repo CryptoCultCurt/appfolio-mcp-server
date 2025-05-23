@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getVendorDirectoryReport = getVendorDirectoryReport;
 exports.registerVendorDirectoryReportTool = registerVendorDirectoryReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Vendor Directory Report arguments
 const vendorDirectoryArgsSchema = zod_1.z.object({
     workers_comp_expiration_to: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional().describe('Optional. Filter vendors whose Workers Comp expires on or before this date (YYYY-MM-DD).'),
@@ -26,26 +21,7 @@ const vendorDirectoryArgsSchema = zod_1.z.object({
 });
 // --- Vendor Directory Report Function ---
 async function getVendorDirectoryReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
-    const { vendor_visibility = "active", payment_type, // Note: API might default to 'all' if not sent, needs verification
-    created_by = "All", vendor_type = "All", ...rest } = args;
-    const payload = {
-        vendor_visibility,
-        created_by,
-        vendor_type,
-        ...rest
-    };
-    // Only include payment_type if it's explicitly provided
-    if (payment_type) {
-        payload.payment_type = payment_type;
-    }
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/vendor_directory.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('vendor_directory.json', args);
 }
 // MCP Tool Registration Function
 function registerVendorDirectoryReportTool(server) {

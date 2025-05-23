@@ -1,16 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getIncomeStatementDateRangeReport = getIncomeStatementDateRangeReport;
 exports.registerIncomeStatementDateRangeReportTool = registerIncomeStatementDateRangeReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const dotenv_1 = __importDefault(require("dotenv"));
 const appfolio_1 = require("../appfolio");
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Originally from src/index.ts (line 77), with defaults added
 const incomeStatementDateRangeArgsSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").optional().describe('Filter properties by status. Defaults to "active"'),
@@ -25,22 +18,23 @@ const incomeStatementDateRangeArgsSchema = zod_1.z.object({
     gl_account_map_id: zod_1.z.string().optional().describe('Filter by a specific GL account map ID'),
     level_of_detail: zod_1.z.enum(["detail_view", "summary_view"]).default("detail_view").optional().describe('Specify the level of detail. Defaults to "detail_view"'),
     include_zero_balance_gl_accounts: zod_1.z.enum(["0", "1"]).default("0").optional().describe('Include GL accounts with zero balance. Defaults to "0" (false)'),
+    fund_type: zod_1.z.enum(["all", "operating", "capital"]).default("all").optional().describe('Filter by fund type. Defaults to "all"'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 // Originally from src/appfolio.ts (function starting line 1479)
 async function getIncomeStatementDateRangeReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD) {
-        throw new Error('Missing AppFolio API credentials');
+    if (!args.posted_on_from || !args.posted_on_to) {
+        throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
     }
-    // Required fields posted_on_from and posted_on_to are enforced by Zod schema
-    // Defaults are now handled by Zod schema
-    const payload = args;
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/income_statement_date_range.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", fund_type = "all", level_of_detail = "detail_view", include_zero_balance_gl_accounts = "0", ...rest } = args;
+    const payload = {
+        property_visibility,
+        fund_type,
+        level_of_detail,
+        include_zero_balance_gl_accounts,
+        ...rest
+    };
+    return (0, appfolio_1.makeAppfolioApiCall)('income_statement_date_range.json', payload);
 }
 // New registration function for MCP
 function registerIncomeStatementDateRangeReportTool(server) {

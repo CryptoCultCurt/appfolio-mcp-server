@@ -1,17 +1,6 @@
-import { z } from "zod";
-import axios from 'axios';
-import Bottleneck from "bottleneck";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Limiter, assuming it's used by this report function or similar ones
-const appfolioLimiter = new Bottleneck({
-  reservoir: 7, 
-  reservoirRefreshAmount: 7,
-  reservoirRefreshInterval: 15 * 1000, 
-  maxConcurrent: 1
-});
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 export type DelinquencyColumn =
   | 'unit'
@@ -71,7 +60,7 @@ export type DelinquencyAsOfArgs = {
     portfolios_ids?: string[];
     owners_ids?: string[];
   };
-  occurred_on_to: string; 
+  as_of: string; 
   delinquency_note_range?: string;
   tenant_statuses?: string[]; 
   tags?: string;
@@ -127,12 +116,15 @@ export type DelinquencyAsOfResult = {
 };
 
 export async function getDelinquencyAsOfReport(args: DelinquencyAsOfArgs): Promise<DelinquencyAsOfResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  const {
+  if (!args.as_of) {
+    throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
+  }
+
+  const { 
     property_visibility = "active",
-    tenant_statuses = ["0", "4"], 
-    amount_owed_in_account = "all", 
-    ...rest
+    tenant_statuses = ["0", "4"],
+    amount_owed_in_account = "all",
+    ...rest 
   } = args;
 
   const payload = {
@@ -142,12 +134,7 @@ export async function getDelinquencyAsOfReport(args: DelinquencyAsOfArgs): Promi
     ...rest
   };
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/delinquency_as_of.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  return makeAppfolioApiCall<DelinquencyAsOfResult>('delinquency_as_of.json', payload);
 }
 
 export const delinquencyAsOfInputSchema = z.object({
@@ -158,7 +145,7 @@ export const delinquencyAsOfInputSchema = z.object({
     portfolios_ids: z.array(z.string()).optional(),
     owners_ids: z.array(z.string()).optional(),
   }).optional(),
-  occurred_on_to: z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."), 
+  as_of: z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."), 
   delinquency_note_range: z.string().optional(),
   tenant_statuses: z.array(z.string()).default(["0", "4"].slice()).optional(), 
   tags: z.string().optional(),

@@ -1,14 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getTrialBalanceByPropertyReport = getTrialBalanceByPropertyReport;
 exports.registerTrialBalanceByPropertyReportTool = registerTrialBalanceByPropertyReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const axios_1 = __importDefault(require("axios"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Zod schema for Trial Balance By Property Report arguments
 const trialBalanceByPropertyArgsSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active"'),
@@ -25,19 +20,12 @@ const trialBalanceByPropertyArgsSchema = zod_1.z.object({
 });
 // --- Trial Balance By Property Report Function ---
 async function getTrialBalanceByPropertyReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.posted_on_from || !args.posted_on_to) {
         throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
     }
     const { property_visibility = "active", ...rest } = args;
     const payload = { property_visibility, ...rest };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/trial_balance_by_property.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('trial_balance_by_property.json', payload);
 }
 // --- Trial Balance By Property Report Tool ---
 function registerTrialBalanceByPropertyReportTool(server) {

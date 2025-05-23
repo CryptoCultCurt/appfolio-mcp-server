@@ -1,10 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-import Bottleneck from 'bottleneck'; // Added Bottleneck import
-import axios from 'axios'; // Add axios import
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Type definitions copied from src/appfolio.ts
 export type AgedPayablesSummaryArgs = {
@@ -15,7 +11,7 @@ export type AgedPayablesSummaryArgs = {
     portfolios_ids?: string[];
     owners_ids?: string[];
   };
-  occurred_on_to: string;
+  occurred_on?: string;
   party_contact_info?: {
     company_id?: string;
   };
@@ -62,7 +58,7 @@ const agedPayablesSummaryInputSchema = z.object({
     portfolios_ids: z.array(z.string()).optional(),
     owners_ids: z.array(z.string()).optional(),
   }).optional(),
-  occurred_on_to: z.string(),
+  occurred_on: z.string(),
   party_contact_info: z.object({
     company_id: z.string().optional()
   }).optional(),
@@ -74,18 +70,15 @@ const agedPayablesSummaryInputSchema = z.object({
 });
 
 // Function definition copied from src/appfolio.ts
-export async function getAgedPayablesSummaryReport(args: AgedPayablesSummaryArgs): Promise<AgedPayablesSummaryResult> { 
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  // The Zod schema now handles the default for property_visibility
-  const payload = { ...args }; // property_visibility default is handled by Zod parsing
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/aged_payables_summary.json`;
-  const response = await appfolioLimiter.schedule(() => 
-    axios.post(url, payload, { // Use imported axios
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    })
-  );
-  return response.data;
+export async function getAgedPayablesSummaryReport(args: AgedPayablesSummaryArgs): Promise<AgedPayablesSummaryResult> {
+  if (!args.occurred_on) {
+    throw new Error('Missing required argument: occurred_on (format YYYY-MM-DD)');
+  }
+
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<AgedPayablesSummaryResult>('aged_payables_summary.json', payload);
 }
 
 // MCP Tool Registration Function

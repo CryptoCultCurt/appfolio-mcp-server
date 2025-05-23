@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import Bottleneck from "bottleneck";
+import axios from 'axios'; // Import axios
 dotenv.config();
 
 import { getCashflowReport, CashflowReportArgs } from './reports/cashflowReport'; 
@@ -22,7 +23,7 @@ import { getInProgressWorkflowsReport, InProgressWorkflowsArgs, InProgressWorkfl
 import { getIncomeStatementDateRangeReport, IncomeStatementDateRangeArgs, IncomeStatementDateRangeResult } from './reports/incomeStatementDateRangeReport';
 import { getWorkOrderLaborSummaryReport, WorkOrderLaborSummaryArgs, WorkOrderLaborSummaryResult } from './reports/workOrderLaborSummaryReport';
 import { getCancelledWorkflowsReport, CancelledWorkflowsArgs, CancelledWorkflowsResult } from './reports/cancelledWorkflowsReport';
-import { getLeaseExpirationDetailByMonthReport, LeaseExpirationDetailArgs, LeaseExpirationDetailResult } from './reports/leaseExpirationDetailReport';
+import { getLeaseExpirationDetailReport, LeaseExpirationDetailArgs, LeaseExpirationDetailResult } from './reports/leaseExpirationDetailReport';
 import { getLeasingSummaryReport, LeasingSummaryArgs, LeasingSummaryResult } from './reports/leasingSummaryReport';
 import { getOwnerDirectoryReport, OwnerDirectoryReportArgs, OwnerDirectoryResult, OwnerDirectoryReportPropertiesArgs, OwnerDirectoryReportResultItem } from './reports/ownerDirectoryReport';
 import { getLoansReport, LoansArgs, LoansResult } from './reports/loansReport';
@@ -39,7 +40,7 @@ import { getScreeningAssessmentReport, ScreeningAssessmentArgs, ScreeningAssessm
 import { getSecurityDepositFundsDetailReport, SecurityDepositFundsDetailArgs, SecurityDepositFundsDetailResult } from './reports/securityDepositFundsDetailReport';
 import { getTenantDirectoryReport, TenantDirectoryArgs, TenantDirectoryResult } from './reports/tenantDirectoryReport';
 import { getTenantLedgerReport, TenantLedgerArgs, TenantLedgerResult } from './reports/tenantLedgerReport';
-import { getPropertyDirectoryReport } from './reports/propertyDirectoryReport';
+import { getPropertyDirectoryReport, PropertyDirectoryArgs, PropertyDirectoryResult } from './reports/propertyDirectoryReport';
 import { getCashflow12MonthReport, Cashflow12MonthArgs, Cashflow12MonthResult } from './reports/cashflow12MonthReport';
 import { getIncomeStatement12MonthReport, IncomeStatement12MonthArgs, IncomeStatement12MonthResult } from './reports/incomeStatement12MonthReport';
 import { getUnitDirectoryReport, UnitDirectoryArgs, UnitDirectoryResult } from './reports/unitDirectoryReport';
@@ -55,6 +56,25 @@ export const appfolioLimiter = new Bottleneck({
   maxConcurrent: 10,
   minTime: 100 // 10 requests per second, also helps with reservoir not depleting too fast
 });
+
+// Centralized AppFolio API call function with shared rate limiting and authentication
+export async function makeAppfolioApiCall<T = any>(endpoint: string, payload: any): Promise<T> {
+  const { VHOST, USERNAME, PASSWORD } = process.env;
+  
+  if (!VHOST || !USERNAME || !PASSWORD) {
+    throw new Error('Missing AppFolio API credentials');
+  }
+
+  const url = `https://${VHOST}.appfolio.com/api/v2/reports/${endpoint}`;
+  const response = await appfolioLimiter.schedule(() => 
+    axios.post(url, payload, {
+      auth: { username: USERNAME, password: PASSWORD },
+      headers: { 'Content-Type': 'application/json' },
+    })
+  );
+
+  return response.data;
+}
 
 export {
   // Imported from ./reports/cashflowReport
@@ -159,7 +179,7 @@ export {
   CancelledWorkflowsResult,
 
   // Imported from ./reports/leaseExpirationDetailReport
-  getLeaseExpirationDetailByMonthReport,
+  getLeaseExpirationDetailReport,
   LeaseExpirationDetailArgs,
   LeaseExpirationDetailResult,
 
@@ -247,6 +267,8 @@ export {
 
   // Imported from ./reports/propertyDirectoryReport
   getPropertyDirectoryReport,
+  PropertyDirectoryArgs,
+  PropertyDirectoryResult,
 
   // Imported from ./reports/cashflow12MonthReport
   getCashflow12MonthReport,

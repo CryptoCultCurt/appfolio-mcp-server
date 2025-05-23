@@ -1,18 +1,8 @@
 import { z } from "zod";
-import axios from 'axios';
-import Bottleneck from "bottleneck";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { makeAppfolioApiCall } from '../appfolio';
 
-const { VHOST, USERNAME, PASSWORD } = process.env;
-
-// Limiter, assuming it's used by this report function or similar ones
-const appfolioLimiter = new Bottleneck({
-  reservoir: 7, 
-  reservoirRefreshAmount: 7,
-  reservoirRefreshInterval: 15 * 1000, 
-  maxConcurrent: 1
-});
-
+// --- Expense Distribution Report Types ---
 export type ExpenseDistributionArgs = {
   property_visibility?: string;
   properties?: {
@@ -52,14 +42,14 @@ export type ExpenseDistributionResult = {
 };
 
 export async function getExpenseDistributionReport(args: ExpenseDistributionArgs): Promise<ExpenseDistributionResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  const payload = { ...args, property_visibility: args.property_visibility ?? "active" };
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/expense_distribution.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  if (!args.posted_on_from || !args.posted_on_to) {
+    throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
+  }
+
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
+
+  return makeAppfolioApiCall<ExpenseDistributionResult>('expense_distribution.json', payload);
 }
 
 export const expenseDistributionInputSchema = z.object({

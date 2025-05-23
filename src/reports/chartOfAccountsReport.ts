@@ -1,12 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
-
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Originally from src/appfolio.ts (lines 61-63)
 export type ChartOfAccountsArgs = {
@@ -39,19 +33,7 @@ const chartOfAccountsArgsSchema = z.object({
 
 // Originally from src/appfolio.ts (function starting line 1603)
 export async function getChartOfAccountsReport(args: ChartOfAccountsArgs): Promise<ChartOfAccountsResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) {
-    throw new Error('Missing AppFolio API credentials');
-  }
-
-  const payload = { ...args }; // Simple payload, just pass args
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/chart_of_accounts.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<ChartOfAccountsResult>('chart_of_accounts.json', args);
 }
 
 // New registration function for MCP

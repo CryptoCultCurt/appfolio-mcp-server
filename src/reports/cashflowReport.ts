@@ -1,12 +1,6 @@
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio';
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-
-dotenv.config();
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { z } from 'zod';
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 export type CashflowReportArgs = {
   property_visibility: string;
@@ -24,13 +18,7 @@ export type CashflowReportArgs = {
 };
 
 export async function getCashflowReport(args: CashflowReportArgs) {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/cash_flow_detail.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, args, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-  return response.data;
+  return makeAppfolioApiCall('cash_flow_detail.json', args);
 }
 
 // Zod schema for Cash Flow Report arguments

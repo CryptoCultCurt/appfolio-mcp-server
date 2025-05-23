@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Unit Vacancy Detail Report Types ---
 export type UnitVacancyDetailArgs = {
@@ -13,7 +10,7 @@ export type UnitVacancyDetailArgs = {
       portfolios_ids?: string[];
       owners_ids?: string[];
     };
-    unit_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
+    property_visibility?: "active" | "hidden" | "all"; // Defaults to "active"
     tags?: string; // Comma-separated list of tags
     columns?: string[];
   };
@@ -69,24 +66,16 @@ const unitVacancyDetailArgsSchema = z.object({
       portfolios_ids: z.array(z.string()).optional(),
       owners_ids: z.array(z.string()).optional()
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
-    unit_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
+    property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     tags: z.string().optional().describe('Optional. Filter by a comma-separated list of tags (e.g., "bbq,deck").'),
     columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
   });
 // --- Unit Vacancy Detail Report Function ---
 export async function getUnitVacancyDetailReport(args: UnitVacancyDetailArgs): Promise<UnitVacancyDetailResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  const { unit_visibility = "active", ...rest } = args;
-  const payload = { unit_visibility, ...rest };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/unit_vacancy.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<UnitVacancyDetailResult>('unit_vacancy_detail.json', payload);
 }
 
 // MCP Tool Registration Function

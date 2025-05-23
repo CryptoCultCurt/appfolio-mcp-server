@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-import axios from 'axios';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Vendor Directory Report Types ---
 export type VendorDirectoryArgs = {
@@ -75,34 +72,7 @@ const vendorDirectoryArgsSchema = z.object({
 
 // --- Vendor Directory Report Function ---
 export async function getVendorDirectoryReport(args: VendorDirectoryArgs): Promise<VendorDirectoryResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-
-  const {
-    vendor_visibility = "active",
-    payment_type, // Note: API might default to 'all' if not sent, needs verification
-    created_by = "All",
-    vendor_type = "All",
-    ...rest
-  } = args;
-
-  const payload: Record<string, any> = {
-    vendor_visibility,
-    created_by,
-    vendor_type,
-    ...rest
-  };
-  // Only include payment_type if it's explicitly provided
-  if (payment_type) {
-    payload.payment_type = payment_type;
-  }
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/vendor_directory.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<VendorDirectoryResult>('vendor_directory.json', args);
 }
 
 // MCP Tool Registration Function

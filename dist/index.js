@@ -52,7 +52,7 @@ const tenantLedgerReport_1 = require("./reports/tenantLedgerReport");
 // Create the MCP server
 const server = new mcp_js_1.McpServer({
     name: "appfolio-mcp",
-    version: "1.0.0",
+    version: "1.0.1",
 });
 const transport = new stdio_js_1.StdioServerTransport();
 (0, cashflowReport_1.registerCashflowReportTool)(server);

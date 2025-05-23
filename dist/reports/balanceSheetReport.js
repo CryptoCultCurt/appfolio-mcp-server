@@ -1,24 +1,11 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.balanceSheetInputSchema = void 0;
 exports.getBalanceSheetReport = getBalanceSheetReport;
 exports.registerBalanceSheetReportTool = registerBalanceSheetReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
-const bottleneck_1 = __importDefault(require("bottleneck"));
-const { VHOST, USERNAME, PASSWORD } = process.env;
-const appfolioLimiter = new bottleneck_1.default({
-    reservoir: 7,
-    reservoirRefreshAmount: 7,
-    reservoirRefreshInterval: 15 * 1000,
-    maxConcurrent: 1
-});
+const appfolio_1 = require("../appfolio");
 async function getBalanceSheetReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     if (!args.posted_on_to) {
         throw new Error('posted_on_to is required');
     }
@@ -29,12 +16,7 @@ async function getBalanceSheetReport(args) {
         include_zero_balance_gl_accounts,
         ...rest
     };
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/balance_sheet.json`;
-    const response = await appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('balance_sheet.json', payload);
 }
 exports.balanceSheetInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").optional(),

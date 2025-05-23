@@ -1,9 +1,6 @@
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Property Source Tracking Report Types ---
 export type PropertySourceTrackingArgs = {
@@ -33,25 +30,14 @@ export type PropertySourceTrackingResult = {
 
 // --- Property Source Tracking Report Function ---
 export async function getPropertySourceTrackingReport(args: PropertySourceTrackingArgs): Promise<PropertySourceTrackingResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   if (!args.received_on_from || !args.received_on_to) {
     throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
   }
 
   const { unit_visibility = "active", ...rest } = args;
+  const payload = { unit_visibility, ...rest };
 
-  const payload = {
-    unit_visibility,
-    ...rest
-  };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/prospect_source_tracking.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<PropertySourceTrackingResult>('prospect_source_tracking.json', payload);
 }
 
 // Zod schema for Property Source Tracking Report arguments

@@ -1,16 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getAgedReceivablesDetailReport = getAgedReceivablesDetailReport;
 exports.registerAgedReceivablesDetailReportTool = registerAgedReceivablesDetailReportTool;
-const axios_1 = __importDefault(require("axios"));
 const zod_1 = require("zod");
-const dotenv_1 = __importDefault(require("dotenv"));
 const appfolio_1 = require("../appfolio");
-dotenv_1.default.config(); // Ensure environment variables are loaded
-const { VHOST, USERNAME, PASSWORD } = process.env;
 // Originally from src/index.ts (lines 42-78)
 const agedReceivablesDetailInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.string().default("active"),
@@ -29,20 +22,16 @@ const agedReceivablesDetailInputSchema = zod_1.z.object({
     occurred_on_to: zod_1.z.string(),
     gl_account_map_id: zod_1.z.string().optional(),
     columns: zod_1.z.array(zod_1.z.string()).optional(),
+    as_of: zod_1.z.string(),
 });
 // Originally from src/appfolio.ts (function starting line 1664)
 async function getAgedReceivablesDetailReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD) {
-        throw new Error('Missing AppFolio API credentials');
+    if (!args.as_of) {
+        throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
     }
-    // Zod schema handles the default for property_visibility, so args can be used directly.
-    const payload = args;
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/aged_receivables_detail.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    const { property_visibility = "active", ...rest } = args;
+    const payload = { property_visibility, ...rest };
+    return (0, appfolio_1.makeAppfolioApiCall)('aged_receivables_detail.json', payload);
 }
 // New registration function for MCP
 function registerAgedReceivablesDetailReportTool(server) {

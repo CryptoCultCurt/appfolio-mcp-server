@@ -1,11 +1,6 @@
 import { z } from "zod";
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import axios from "axios";
-import dotenv from "dotenv";
-import { appfolioLimiter } from "../appfolio"; // Assuming appfolioLimiter is exported from appfolio.ts or a central place
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { makeAppfolioApiCall } from "../appfolio";
 
 // --- Work Order Report Types ---
 export type WorkOrderArgs = {
@@ -137,8 +132,6 @@ const workOrderArgsSchema = z.object({
 });
 
 export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrderResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
-
   const {
     property_visibility = "active",
     assigned_user = "All",
@@ -151,7 +144,6 @@ export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrder
     ...rest
   } = args;
 
-  // Construct payload, handle potential null for from_inspection
   const payload: any = {
     property_visibility,
     assigned_user,
@@ -168,13 +160,7 @@ export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrder
     payload.from_inspection = from_inspection;
   }
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<WorkOrderResult>('work_order.json', payload);
 }
 
 export function registerWorkOrderReportTool(server: McpServer) {

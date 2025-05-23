@@ -1,11 +1,6 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import axios from 'axios';
-import dotenv from 'dotenv';
-import { appfolioLimiter } from '../appfolio'; // Assuming appfolioLimiter is exported from appfolio.ts
-
-dotenv.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import { makeAppfolioApiCall } from '../appfolio';
 
 // Zod schema for Cancelled Workflows Report arguments
 export const cancelledWorkflowsArgsSchema = z.object({
@@ -24,7 +19,7 @@ export const cancelledWorkflowsArgsSchema = z.object({
   properties: z.object({
     properties_ids: z.array(z.string()).optional(),
     property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional()
+    portfolios_id: z.array(z.string()).optional()
   }).optional().describe('Filter results based on properties, groups, or portfolios'),
   process_template: z.string().default("All").describe('Filter by specific process template name. Defaults to "All"'),
   workflow_step: z.string().default("All").describe('Filter by specific workflow step name. Defaults to "All"'),
@@ -52,18 +47,10 @@ export type CancelledWorkflowsResult = {
 
 // --- Cancelled Workflows Report Function ---
 export async function getCancelledWorkflowsReport(args: CancelledWorkflowsArgs): Promise<CancelledWorkflowsResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
+  const { property_visibility = "active", ...rest } = args;
+  const payload = { property_visibility, ...rest };
 
-  // Defaults are handled by Zod schema now
-  const payload = { ...args };
-
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/cancelled_processes.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<CancelledWorkflowsResult>('cancelled_processes.json', payload);
 }
 
 // Registration function for the tool

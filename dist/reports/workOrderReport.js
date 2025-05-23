@@ -1,16 +1,9 @@
 "use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getWorkOrderReport = getWorkOrderReport;
 exports.registerWorkOrderReportTool = registerWorkOrderReportTool;
 const zod_1 = require("zod");
-const axios_1 = __importDefault(require("axios"));
-const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_1 = require("../appfolio"); // Assuming appfolioLimiter is exported from appfolio.ts or a central place
-dotenv_1.default.config();
-const { VHOST, USERNAME, PASSWORD } = process.env;
+const appfolio_1 = require("../appfolio");
 // Zod schema for Work Order Report arguments
 const workOrderArgsSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active".'),
@@ -32,12 +25,9 @@ const workOrderArgsSchema = zod_1.z.object({
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 async function getWorkOrderReport(args) {
-    if (!VHOST || !USERNAME || !PASSWORD)
-        throw new Error('Missing AppFolio API credentials');
     const { property_visibility = "active", assigned_user = "All", created_by = "All", priority = "All", current_estimate_approval_status = "All", status_date = "all", unit_turn_category = ["all"], // Default based on API description
     from_inspection = null, // Explicitly set default
     ...rest } = args;
-    // Construct payload, handle potential null for from_inspection
     const payload = {
         property_visibility,
         assigned_user,
@@ -52,12 +42,7 @@ async function getWorkOrderReport(args) {
     if (from_inspection !== null) {
         payload.from_inspection = from_inspection;
     }
-    const url = `https://${VHOST}.appfolio.com/api/v2/reports/work_order.json`;
-    const response = await appfolio_1.appfolioLimiter.schedule(() => axios_1.default.post(url, payload, {
-        auth: { username: USERNAME, password: PASSWORD },
-        headers: { 'Content-Type': 'application/json' },
-    }));
-    return response.data;
+    return (0, appfolio_1.makeAppfolioApiCall)('work_order.json', payload);
 }
 function registerWorkOrderReportTool(server) {
     server.tool("get_work_order_report", "Generates a report on work orders.", workOrderArgsSchema.shape, async (args, _extra) => {

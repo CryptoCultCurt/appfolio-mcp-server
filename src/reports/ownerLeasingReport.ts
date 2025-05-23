@@ -1,9 +1,6 @@
-import axios from 'axios';
 import { z } from 'zod';
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { appfolioLimiter } from '../appfolio';
-
-const { VHOST, USERNAME, PASSWORD } = process.env;
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 // --- Owner Leasing Report Types ---
 export type OwnerLeasingArgs = {
@@ -58,21 +55,13 @@ export const ownerLeasingArgsSchema = z.object({
 
 // --- Owner Leasing Report Function ---
 export async function getOwnerLeasingReport(args: OwnerLeasingArgs): Promise<OwnerLeasingResult> {
-  if (!VHOST || !USERNAME || !PASSWORD) throw new Error('Missing AppFolio API credentials');
   if (!args.received_on_from || !args.received_on_to) {
     throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
   }
 
-  // Defaults are handled by Zod now
-  const payload = { ...args };
+  const payload = args;
 
-  const url = `https://${VHOST}.appfolio.com/api/v2/reports/owner_leasing.json`;
-  const response = await appfolioLimiter.schedule(() => axios.post(url, payload, {
-    auth: { username: USERNAME, password: PASSWORD },
-    headers: { 'Content-Type': 'application/json' },
-  }));
-
-  return response.data;
+  return makeAppfolioApiCall<OwnerLeasingResult>('owner_leasing.json', payload);
 }
 
 // --- Register Owner Leasing Report Tool ---
