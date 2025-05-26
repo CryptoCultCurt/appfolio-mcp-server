@@ -86,19 +86,35 @@ export async function getOwnerDirectoryReport(args: z.infer<typeof ownerDirector
 export function registerOwnerDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_owner_directory_report",
-    "Returns an owner directory report based on specified filters.",
+    "Retrieves an owner directory report with details about property owners. IMPORTANT: All ID parameters (properties_ids, portfolios_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use Property Directory Report first to lookup property IDs by name if needed.",
     ownerDirectoryArgsSchema.shape,
-    async (args: z.infer<typeof ownerDirectoryArgsSchema>) => {
-      const data = await getOwnerDirectoryReport(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = ownerDirectoryArgsSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getOwnerDirectoryReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Owner Directory Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

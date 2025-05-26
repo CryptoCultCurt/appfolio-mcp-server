@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Rental Applications Report Types ---
 export type RentalApplicationsArgs = {
@@ -101,11 +102,11 @@ export type RentalApplicationsResult = {
 const rentalApplicationsInputSchema = z.object({
   property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional()
-  }).optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
   received_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
   received_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional(),
   statuses: z.array(z.string()).optional(),
@@ -118,6 +119,12 @@ export async function getRentalApplicationsReport(args: RentalApplicationsArgs):
     throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -127,7 +134,7 @@ export async function getRentalApplicationsReport(args: RentalApplicationsArgs):
 export function registerRentalApplicationsReportTool(server: McpServer) {
   server.tool(
     "get_rental_applications_report",
-    "Returns rental applications report for the given filters.",
+    "Returns rental applications report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     rentalApplicationsInputSchema.shape,
     async (args: any, _extra: any) => {
       const data = await getRentalApplicationsReport(args as RentalApplicationsArgs);

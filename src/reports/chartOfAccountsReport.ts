@@ -42,17 +42,33 @@ export function registerChartOfAccountsReportTool(server: McpServer) {
     "get_chart_of_accounts_report",
     "Returns the chart of accounts.", // Description from original registration
     chartOfAccountsArgsSchema.shape,
-    async (toolArgs: z.infer<typeof chartOfAccountsArgsSchema>) => {
-      const data = await getChartOfAccountsReport(toolArgs as ChartOfAccountsArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = chartOfAccountsArgsSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getChartOfAccountsReport(parseResult.data as ChartOfAccountsArgs);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Chart of Accounts Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

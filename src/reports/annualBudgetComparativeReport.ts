@@ -62,22 +62,37 @@ export async function getAnnualBudgetComparativeReport(args: AnnualBudgetCompArg
 }
 
 export function registerAnnualBudgetComparativeReportTool(server: McpServer) {
-  type AnnualBudgetComparativeArgsFromSchema = z.infer<typeof annualBudgetComparativeInputSchema>;
   server.tool(
     "get_annual_budget_comparative_report",
     "Returns annual budget comparative report for the given filters.",
     annualBudgetComparativeInputSchema.shape,
-    async (args: AnnualBudgetComparativeArgsFromSchema, _extra: unknown) => {
-      const data = await getAnnualBudgetComparativeReport(args as AnnualBudgetCompArgsV2); // Cast because Zod default might add properties not in original type
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = annualBudgetComparativeInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getAnnualBudgetComparativeReport(parseResult.data as AnnualBudgetCompArgsV2);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Annual Budget Comparative Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

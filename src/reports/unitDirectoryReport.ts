@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Unit Directory Report Types ---
 export type UnitDirectoryArgs = {
@@ -67,11 +68,11 @@ export type UnitDirectoryArgs = {
   // Zod schema for Unit Directory Report arguments
 const unitDirectoryArgsSchema = z.object({
     properties: z.object({
-      properties_ids: z.array(z.string()).optional(),
-      property_groups_ids: z.array(z.string()).optional(),
-      portfolios_ids: z.array(z.string()).optional(),
-      owners_ids: z.array(z.string()).optional()
-    }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
+      properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+      property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+      portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+      owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+    }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
     unit_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     tags: z.string().optional().describe('Optional. Filter by a comma-separated list of tags (e.g., "bbq,deck").'),
     columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
@@ -79,6 +80,12 @@ const unitDirectoryArgsSchema = z.object({
 
 // --- Unit Directory Report Function ---
 export async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<UnitDirectoryResult> {
+    // Validate ID fields
+    if (args.properties) {
+      const validationErrors = validatePropertiesIds(args.properties);
+      throwOnValidationErrors(validationErrors);
+    }
+
     const { unit_visibility = "active", ...rest } = args;
     const payload = { unit_visibility, ...rest };
   
@@ -89,19 +96,35 @@ export async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<U
   export function registerUnitDirectoryReportTool(server: McpServer) {
     server.tool(
       "get_unit_directory_report",
-      "Retrieves a directory of units.",
+      "Retrieves a unit directory report with details about units in properties. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
       unitDirectoryArgsSchema.shape,
-      async (args: any, _extra: any) => {
-        const data = await getUnitDirectoryReport(args as UnitDirectoryArgs);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(data),
-              mimeType: "application/json"
-            }
-          ]
-        };
+      async (args, _extra: unknown) => {
+        try {
+          // Validate arguments against schema
+          const parseResult = unitDirectoryArgsSchema.safeParse(args);
+          if (!parseResult.success) {
+            const errorMessages = parseResult.error.errors.map(err => 
+              `${err.path.join('.')}: ${err.message}`
+            ).join('; ');
+            throw new Error(`Invalid arguments: ${errorMessages}`);
+          }
+
+          const result = await getUnitDirectoryReport(parseResult.data);
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(result, null, 2),
+                mimeType: "application/json"
+              }
+            ]
+          };
+        } catch (error) {
+          // Enhanced error reporting for debugging
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`Unit Directory Report Error:`, errorMessage);
+          throw error;
+        }
       }
     );
   }

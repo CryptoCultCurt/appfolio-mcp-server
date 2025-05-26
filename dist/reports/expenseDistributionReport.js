@@ -31,15 +31,29 @@ exports.expenseDistributionInputSchema = zod_1.z.object({
 });
 function registerExpenseDistributionReportTool(server) {
     server.tool("get_expense_distribution_report", "Returns expense distribution report for the given filters.", exports.expenseDistributionInputSchema.shape, async (args, _extra) => {
-        const data = await getExpenseDistributionReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.expenseDistributionInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getExpenseDistributionReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Expense Distribution Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

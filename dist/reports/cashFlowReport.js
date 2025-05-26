@@ -24,15 +24,29 @@ const cashflowInputSchema = zod_1.z.object({
 });
 function registerCashflowReportTool(server) {
     server.tool("get_cashflow_report", "Returns Cash Flow Details including income and expenses for given time period.", cashflowInputSchema.shape, async (args, _extra) => {
-        const data = await getCashflowReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = cashflowInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getCashflowReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Cashflow Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

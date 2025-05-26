@@ -147,17 +147,33 @@ export function registerSecurityDepositFundsDetailReportTool(server: McpServer) 
     "get_security_deposit_funds_detail_report",
     "Returns security deposit funds detail report for the given filters.",
     securityDepositFundsDetailInputSchema.shape,
-    async (args: any, _extra: any) => {
-      const data = await getSecurityDepositFundsDetailReport(args as SecurityDepositFundsDetailArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = securityDepositFundsDetailInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getSecurityDepositFundsDetailReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Security Deposit Funds Detail Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

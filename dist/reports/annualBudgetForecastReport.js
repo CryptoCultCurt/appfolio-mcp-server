@@ -29,15 +29,29 @@ async function getAnnualBudgetForecastReport(args) {
 }
 function registerAnnualBudgetForecastReportTool(server) {
     server.tool("get_annual_budget_forecast_report", "Returns annual budget forecast report for the given filters.", exports.annualBudgetForecastInputSchema.shape, async (args, _extra) => {
-        const data = await getAnnualBudgetForecastReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.annualBudgetForecastInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getAnnualBudgetForecastReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Annual Budget Forecast Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

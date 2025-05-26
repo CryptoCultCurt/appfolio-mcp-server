@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validateWorkflowIds, validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Originally from src/appfolio.ts (lines 64-88)
 export type InProgressWorkflowsArgs = {
@@ -46,22 +47,22 @@ export type InProgressWorkflowsResult = {
 // Originally from src/index.ts (line 76), with defaults added
 const inProgressWorkflowsArgsSchema = z.object({
   attachables: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    units_ids: z.array(z.string()).optional(),
-    tenants_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-    rental_applications_ids: z.array(z.string()).optional(),
-    guest_cards_ids: z.array(z.string()).optional(),
-    guest_card_interests_ids: z.array(z.string()).optional(),
-    service_requests_ids: z.array(z.string()).optional(),
-    vendors_ids: z.array(z.string()).optional(),
-  }).optional().describe('Filter results based on specific attached entities'),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    units_ids: z.array(z.string()).optional().describe(getIdFieldDescription('units_ids', 'Unit', 'Unit Directory Report')),
+    tenants_ids: z.array(z.string()).optional().describe(getIdFieldDescription('tenants_ids', 'Tenant', 'Tenant Directory Report')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report')),
+    rental_applications_ids: z.array(z.string()).optional().describe(getIdFieldDescription('rental_applications_ids', 'Rental Application')),
+    guest_cards_ids: z.array(z.string()).optional().describe(getIdFieldDescription('guest_cards_ids', 'Guest Card')),
+    guest_card_interests_ids: z.array(z.string()).optional().describe(getIdFieldDescription('guest_card_interests_ids', 'Guest Card Interest')),
+    service_requests_ids: z.array(z.string()).optional().describe(getIdFieldDescription('service_requests_ids', 'Service Request')),
+    vendors_ids: z.array(z.string()).optional().describe(getIdFieldDescription('vendors_ids', 'Vendor', 'Vendor Directory Report')),
+  }).optional().describe('Filter results based on specific attached entities. All ID fields must be numeric strings, not names.'),
   property_visibility: z.enum(["active", "hidden", "all"]).default("active").optional().describe('Filter properties by status. Defaults to "active"'),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-  }).optional().describe('Filter results based on properties, groups, or portfolios'),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+  }).optional().describe('Filter results based on properties, groups, or portfolios. All ID fields must be numeric strings, not names.'),
   process_template: z.string().default("All").optional().describe('Filter by specific process template name. Defaults to "All"'),
   workflow_step: z.string().default("All").optional().describe('Filter by specific workflow step name. Defaults to "All"'),
   assigned_user: z.string().default("All").optional().describe('Filter by assigned user name. Defaults to "All"'),
@@ -72,6 +73,19 @@ const inProgressWorkflowsArgsSchema = z.object({
 
 // Originally from src/appfolio.ts (function starting line 1517)
 export async function getInProgressWorkflowsReport(args: InProgressWorkflowsArgs): Promise<InProgressWorkflowsResult> {
+  // Validate ID fields
+  const validationErrors: any[] = [];
+  
+  if (args.attachables) {
+    validationErrors.push(...validateWorkflowIds(args.attachables));
+  }
+  
+  if (args.properties) {
+    validationErrors.push(...validatePropertiesIds(args.properties));
+  }
+  
+  throwOnValidationErrors(validationErrors);
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -82,7 +96,7 @@ export async function getInProgressWorkflowsReport(args: InProgressWorkflowsArgs
 export function registerInProgressWorkflowsReportTool(server: McpServer) {
   server.tool(
     "get_in_progress_workflows_report",
-    "Returns a report of in-progress workflows based on the provided filters.", // Description from original registration
+    "Returns a report of in-progress workflows based on the provided filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, units_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use directory reports first to lookup IDs by name if needed.",
     inProgressWorkflowsArgsSchema.shape,
     async (toolArgs: z.infer<typeof inProgressWorkflowsArgsSchema>) => {
       const data = await getInProgressWorkflowsReport(toolArgs as InProgressWorkflowsArgs);

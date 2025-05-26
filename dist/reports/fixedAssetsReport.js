@@ -24,16 +24,30 @@ async function getFixedAssetsReport(args) {
 }
 // --- Fixed Assets Report Tool Registration ---
 function registerFixedAssetsReportTool(server) {
-    server.tool("get_fixed_assets_report", "Returns a report of fixed assets based on the provided filters.", fixedAssetsArgsSchema.shape, async (toolArgs) => {
-        const data = await getFixedAssetsReport(toolArgs);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    server.tool("get_fixed_assets_report", "Returns a report of fixed assets based on the provided filters.", fixedAssetsArgsSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = fixedAssetsArgsSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getFixedAssetsReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Fixed Assets Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

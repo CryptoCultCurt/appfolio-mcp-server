@@ -106,19 +106,35 @@ export async function getAgedReceivablesDetailReport(args: AgedReceivablesDetail
 export function registerAgedReceivablesDetailReportTool(server: McpServer) {
   server.tool(
     "get_aged_receivables_detail_report",
-    "Returns aged receivables detail for the given filters.", // Description from original registration
+    "Returns aged receivables detail for the given filters.",
     agedReceivablesDetailInputSchema.shape,
-    async (toolArgs: z.infer<typeof agedReceivablesDetailInputSchema>) => {
-      const data = await getAgedReceivablesDetailReport(toolArgs as AgedReceivablesDetailArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = agedReceivablesDetailInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getAgedReceivablesDetailReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Aged Receivables Detail Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

@@ -60,17 +60,33 @@ export function registerFixedAssetsReportTool(server: McpServer) {
     "get_fixed_assets_report",
     "Returns a report of fixed assets based on the provided filters.",
     fixedAssetsArgsSchema.shape,
-    async (toolArgs: z.infer<typeof fixedAssetsArgsSchema>) => {
-      const data = await getFixedAssetsReport(toolArgs as FixedAssetsArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = fixedAssetsArgsSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getFixedAssetsReport(parseResult.data as FixedAssetsArgs);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Fixed Assets Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

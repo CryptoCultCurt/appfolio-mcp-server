@@ -162,17 +162,33 @@ export function registerDelinquencyAsOfReportTool(server: McpServer) {
     "get_delinquency_as_of_report",
     "Returns delinquency as of report for the given filters.",
     delinquencyAsOfInputSchema.shape,
-    async (args: DelinquencyAsOfArgs, _extra: unknown) => {
-      const data = await getDelinquencyAsOfReport(args as DelinquencyAsOfArgs); // Cast args
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = delinquencyAsOfInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getDelinquencyAsOfReport(parseResult.data as DelinquencyAsOfArgs);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Delinquency As Of Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

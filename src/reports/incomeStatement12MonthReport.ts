@@ -80,16 +80,32 @@ export function registerIncomeStatement12MonthReportTool(server: McpServer) {
     "Generates a 12-month income statement report.",
     incomeStatement12MonthArgsSchema.shape,
     async (args, _extra: unknown) => {
-      const data = await getIncomeStatement12MonthReport(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+      try {
+        // Validate arguments against schema
+        const parseResult = incomeStatement12MonthArgsSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getIncomeStatement12MonthReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Income Statement 12 Month Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

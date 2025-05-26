@@ -66,17 +66,33 @@ export function registerLeasingSummaryReportTool(server: McpServer) {
     "get_leasing_summary_report",
     "Provides a summary of leasing activities, including inquiries, showings, applications, and move-ins/outs.",
     leasingSummaryArgsSchema.shape,
-    async (args: LeasingSummaryArgs, _extra: unknown) => {
-      const data = await getLeasingSummaryReport(args);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = leasingSummaryArgsSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getLeasingSummaryReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Leasing Summary Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

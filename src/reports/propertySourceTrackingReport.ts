@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Property Source Tracking Report Types ---
 export type PropertySourceTrackingArgs = {
@@ -34,6 +35,12 @@ export async function getPropertySourceTrackingReport(args: PropertySourceTracki
     throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { unit_visibility = "active", ...rest } = args;
   const payload = { unit_visibility, ...rest };
 
@@ -43,11 +50,11 @@ export async function getPropertySourceTrackingReport(args: PropertySourceTracki
 // Zod schema for Property Source Tracking Report arguments
 const propertySourceTrackingInputSchema = z.object({
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional()
-  }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
   unit_visibility: z.enum(["active", "hidden", "all"]).optional().describe('Filter units by status. Defaults to "active"'),
   received_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period based on received date (YYYY-MM-DD). Required.'),
   received_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period based on received date (YYYY-MM-DD). Required.'),
@@ -58,7 +65,7 @@ const propertySourceTrackingInputSchema = z.object({
 export function registerPropertySourceTrackingReportTool(server: McpServer) {
   server.tool(
     "get_property_source_tracking_report",
-    "Returns property source tracking report for the given filters.",
+    "Returns property source tracking report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     propertySourceTrackingInputSchema.shape,
     async (args: any, _extra: any) => {
       const data = await getPropertySourceTrackingReport(args as PropertySourceTrackingArgs);

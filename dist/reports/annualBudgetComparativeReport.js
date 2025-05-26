@@ -30,15 +30,29 @@ async function getAnnualBudgetComparativeReport(args) {
 }
 function registerAnnualBudgetComparativeReportTool(server) {
     server.tool("get_annual_budget_comparative_report", "Returns annual budget comparative report for the given filters.", exports.annualBudgetComparativeInputSchema.shape, async (args, _extra) => {
-        const data = await getAnnualBudgetComparativeReport(args); // Cast because Zod default might add properties not in original type
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.annualBudgetComparativeInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getAnnualBudgetComparativeReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Annual Budget Comparative Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

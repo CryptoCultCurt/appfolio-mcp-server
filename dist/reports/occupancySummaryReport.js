@@ -28,16 +28,30 @@ async function getOccupancySummaryReport(args) {
 }
 // --- Register Occupancy Summary Report Tool ---
 function registerOccupancySummaryReportTool(server) {
-    server.tool("get_occupancy_summary_report", "Generates a summary of property occupancy, including number of units, occupied units, and vacancy rates.", exports.occupancySummaryArgsSchema.shape, async (args) => {
-        const data = await getOccupancySummaryReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    server.tool("get_occupancy_summary_report", "Generates a summary of property occupancy, including number of units, occupied units, and vacancy rates.", exports.occupancySummaryArgsSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.occupancySummaryArgsSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getOccupancySummaryReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Occupancy Summary Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

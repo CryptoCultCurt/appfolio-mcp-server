@@ -30,15 +30,29 @@ async function getRentRollItemizedReport(args) {
 // MCP Tool Registration Function
 function registerRentRollItemizedReportTool(server) {
     server.tool("get_rent_roll_itemized_report", "Returns rent roll itemized report for the given filters.", rentRollItemizedInputSchema.shape, async (args, _extra) => {
-        const data = await getRentRollItemizedReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = rentRollItemizedInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getRentRollItemizedReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Rent Roll Itemized Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

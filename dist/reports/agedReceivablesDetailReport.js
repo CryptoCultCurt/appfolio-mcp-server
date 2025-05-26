@@ -35,17 +35,30 @@ async function getAgedReceivablesDetailReport(args) {
 }
 // New registration function for MCP
 function registerAgedReceivablesDetailReportTool(server) {
-    server.tool("get_aged_receivables_detail_report", "Returns aged receivables detail for the given filters.", // Description from original registration
-    agedReceivablesDetailInputSchema.shape, async (toolArgs) => {
-        const data = await getAgedReceivablesDetailReport(toolArgs);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    server.tool("get_aged_receivables_detail_report", "Returns aged receivables detail for the given filters.", agedReceivablesDetailInputSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = agedReceivablesDetailInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getAgedReceivablesDetailReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Aged Receivables Detail Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

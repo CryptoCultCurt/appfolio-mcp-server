@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Type definitions based on src/appfolio.ts (Step 180)
 export type LeasingFunnelPerformanceArgs = {
@@ -47,11 +48,11 @@ export type LeasingFunnelPerformanceResult = {
 const leasingFunnelPerformanceInputSchema = z.object({
   property_visibility: z.string().default("all"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report')),
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
   date_from: z.string(),
   date_to: z.string(),
   assigned_user_visibility: z.string().default("active"),
@@ -65,6 +66,12 @@ export async function getLeasingFunnelPerformanceReport(args: LeasingFunnelPerfo
     throw new Error('Missing required arguments: date_from and date_to (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -75,19 +82,35 @@ export async function getLeasingFunnelPerformanceReport(args: LeasingFunnelPerfo
 export function registerLeasingFunnelPerformanceReportTool(server: McpServer) {
   server.tool(
     "get_leasing_funnel_performance_report",
-    "Returns leasing funnel performance report for the given filters.",
+    "Returns leasing funnel performance report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     leasingFunnelPerformanceInputSchema.shape,
-    async (args: any, _extra: any) => {
-      const data = await getLeasingFunnelPerformanceReport(args as LeasingFunnelPerformanceArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = leasingFunnelPerformanceInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getLeasingFunnelPerformanceReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Leasing Funnel Performance Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

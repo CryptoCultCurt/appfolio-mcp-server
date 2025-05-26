@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Unit Inspection Report Types ---
 export type UnitInspectionArgs = {
@@ -44,11 +45,11 @@ export type UnitInspectionArgs = {
   // Zod schema for Unit Inspection Report arguments
 const unitInspectionArgsSchema = z.object({
     properties: z.object({
-      properties_ids: z.array(z.string()).optional(),
-      property_groups_ids: z.array(z.string()).optional(),
-      portfolios_ids: z.array(z.string()).optional(),
-      owners_ids: z.array(z.string()).optional()
-    }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
+      properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+      property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+      portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+      owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+    }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
     unit_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     last_inspection_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional().describe('Optional. Filter units last inspected on or after this date (YYYY-MM-DD).'),
     include_blank_inspection_date: z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include units with no inspection date. Defaults to false.'),
@@ -57,6 +58,12 @@ const unitInspectionArgsSchema = z.object({
 
   // --- Unit Inspection Report Function ---
 export async function getUnitInspectionReport(args: UnitInspectionArgs): Promise<UnitInspectionResult> {
+    // Validate ID fields
+    if (args.properties) {
+      const validationErrors = validatePropertiesIds(args.properties);
+      throwOnValidationErrors(validationErrors);
+    }
+
     const {
       unit_visibility = "active",
       include_blank_inspection_date = "0",
@@ -73,22 +80,22 @@ export async function getUnitInspectionReport(args: UnitInspectionArgs): Promise
   }
 
   // MCP Tool Registration Function
-  export function registerUnitInspectionReportTool(server: McpServer) {
-    server.tool(
-      "get_unit_inspection_report",
-      "Generates a report on unit inspections.",
-      unitInspectionArgsSchema.shape,
-      async (args: any, _extra: any) => {
-        const data = await getUnitInspectionReport(args as UnitInspectionArgs);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(data),
-              mimeType: "application/json"
-            }
-          ]
-        };
-      }
-    );
-  }
+export function registerUnitInspectionReportTool(server: McpServer) {
+  server.tool(
+    "get_unit_inspection_report",
+    "Generates a report on unit inspections. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
+    unitInspectionArgsSchema.shape,
+    async (args: any, _extra: any) => {
+      const data = await getUnitInspectionReport(args as UnitInspectionArgs);
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(data),
+            mimeType: "application/json"
+          }
+        ]
+      };
+    }
+  );
+}

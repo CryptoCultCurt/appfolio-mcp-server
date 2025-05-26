@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Type definitions for Tenant Directory Report
 
@@ -115,15 +116,21 @@ const tenantDirectoryInputSchema = z.object({
   tenant_types: z.array(z.string()).optional().default(["all"]),
   property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional()
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property group', 'Property Directory Report')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolio', 'Property Directory Report')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owner', 'Owner Directory Report'))
   }).optional(),
   columns: z.array(z.string()).optional()
 });
 
 export async function getTenantDirectoryReport(args: TenantDirectoryArgs): Promise<TenantDirectoryResult> {
+  // Validate ID parameters
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { tenant_visibility = "active", ...rest } = args;
   const payload = { tenant_visibility, ...rest };
 
@@ -133,19 +140,35 @@ export async function getTenantDirectoryReport(args: TenantDirectoryArgs): Promi
 export function registerTenantDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_tenant_directory_report",
-    "Returns tenant directory report for the given filters.",
+    "Returns tenant directory report for the given filters. IMPORTANT: All ID parameters (properties_ids, owners_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     tenantDirectoryInputSchema.shape,
-    async (args: any, _extra: any) => {
-      const data = await getTenantDirectoryReport(args as TenantDirectoryArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = tenantDirectoryInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getTenantDirectoryReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Tenant Directory Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

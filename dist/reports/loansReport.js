@@ -29,16 +29,30 @@ async function getLoansReport(args) {
 }
 // --- Register Loans Report Tool ---
 function registerLoansReportTool(server) {
-    server.tool("get_loans_report", "Retrieves a report on loans associated with properties.", exports.loansArgsSchema.shape, async (args) => {
-        const data = await getLoansReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    server.tool("get_loans_report", "Retrieves a report on loans associated with properties.", exports.loansArgsSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.loansArgsSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getLoansReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Loans Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

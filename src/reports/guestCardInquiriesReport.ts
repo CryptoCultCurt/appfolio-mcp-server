@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Type definitions based on src/appfolio.ts (Steps 155 & 107)
 export type GuestCardInquiriesArgs = {
@@ -75,18 +76,18 @@ export type GuestCardInquiriesResult = {
 const guestCardInquiriesInputSchema = z.object({
   property_visibility: z.string().default("active"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  guest_card_sources: z.array(z.string()).optional().default([]),
-  guest_card_statuses: z.array(z.string()).optional().default([]), // General statuses array
-  guest_card_lead_types: z.array(z.string()).optional().default([]),
-  assigned_user: z.string().optional(),
-  assigned_user_visibility: z.string().default("active"), // Added from function default
-  guest_card_status: z.string().default("open"), // Specific status field with default from function
-  filter_date_range_by: z.string().optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report')),
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
+  guest_card_sources: z.array(z.string()).default(["All"]),
+  guest_card_statuses: z.array(z.string()).default(["All"]),
+  guest_card_lead_types: z.array(z.string()).default(["All"]),
+  assigned_user: z.string().default("All"),
+  assigned_user_visibility: z.string().default("active"),
+  guest_card_status: z.string().default("open"),
+  filter_date_range_by: z.string().default("received_on"),
   received_on_from: z.string(),
   received_on_to: z.string(),
   columns: z.array(z.string()).optional(),
@@ -98,8 +99,14 @@ export async function getGuestCardInquiriesReport(args: GuestCardInquiriesArgs):
     throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
   }
 
-  const { property_visibility = "active", ...rest } = args;
-  const payload = { property_visibility, ...rest };
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
+  const { guest_card_status = "open", ...rest } = args;
+  const payload = { guest_card_status, ...rest };
 
   return makeAppfolioApiCall<GuestCardInquiriesResult>('guest_card_inquiries.json', payload);
 }

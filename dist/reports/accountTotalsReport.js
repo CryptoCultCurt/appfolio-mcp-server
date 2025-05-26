@@ -27,16 +27,29 @@ const accountTotalsInputSchema = zod_1.z.object({
 });
 function registerAccountTotalsReportTool(server) {
     server.tool("get_account_totals_report", "Returns account totals for given filters and date range.", accountTotalsInputSchema.shape, async (args, _extra) => {
-        // The Zod schema now handles the default for gl_account_ids
-        const data = await getAccountTotalsReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = accountTotalsInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getAccountTotalsReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Account Totals Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

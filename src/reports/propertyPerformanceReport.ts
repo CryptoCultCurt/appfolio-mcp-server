@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Property Performance Report Types ---
 export type PropertyPerformanceArgs = {
@@ -15,6 +16,7 @@ export type PropertyPerformanceArgs = {
   period_from: string; 
   period_to: string; 
   columns?: string[];
+  report_format: "Current Year Actual" | "Last Year Actual" | "Prior Year Actual" | "Budget Comparison";
 };
 
 export type PropertyPerformanceResult = {
@@ -42,12 +44,12 @@ export type PropertyPerformanceResult = {
 export const propertyPerformanceArgsSchema = z.object({
   property_visibility: z.enum(["active", "hidden", "all"]).default("active").describe('Filter properties by status. Defaults to "active"'),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional()
-  }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
-  gl_account_ids: z.array(z.string()).optional().describe('Filter results by specific GL Account IDs'),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
+  report_format: z.enum(["Current Year Actual", "Last Year Actual", "Prior Year Actual", "Budget Comparison"]).describe('Format for the property performance report. Required.'),
   period_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
   period_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
@@ -59,6 +61,12 @@ export async function getPropertyPerformanceReport(args: PropertyPerformanceArgs
     throw new Error('Missing required arguments: period_from and period_to (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -68,7 +76,7 @@ export async function getPropertyPerformanceReport(args: PropertyPerformanceArgs
 export function registerPropertyPerformanceReportTool(server: McpServer) {
   server.tool(
     'get_property_performance_report',
-    'Retrieves the Property Performance report, showing financial performance metrics for properties within a specified date range.',
+    'Retrieves the Property Performance report, showing financial performance metrics for properties within a specified date range. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. \'123\'), NOT names. Use respective directory reports first to lookup IDs by name if needed.',
     propertyPerformanceArgsSchema.shape,
     async (args: PropertyPerformanceArgs) => {
       const reportData = await getPropertyPerformanceReport(args);

@@ -42,17 +42,33 @@ export function registerCashflowReportTool(server: McpServer) {
     "get_cashflow_report",
     "Returns Cash Flow Details including income and expenses for given time period.",
     cashflowInputSchema.shape,
-    async (args: any, _extra: any) => { // Using 'any' for args for now, can be refined if needed
-      const data = await getCashflowReport(args as CashflowReportArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = cashflowInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getCashflowReport(parseResult.data as CashflowReportArgs);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Cashflow Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

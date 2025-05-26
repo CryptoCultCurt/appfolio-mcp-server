@@ -79,16 +79,32 @@ export async function getCashflow12MonthReport(args: Cashflow12MonthArgs): Promi
       "Generates a 12-month cash flow report.",
       cashflow12MonthArgsSchema.shape,
       async (args, _extra: unknown) => {
-        const data = await getCashflow12MonthReport(args);
-        return {
-          content: [
-            {
-              type: "text",
-              text: JSON.stringify(data),
-              mimeType: "application/json"
-            }
-          ]
-        };
+        try {
+          // Validate arguments against schema
+          const parseResult = cashflow12MonthArgsSchema.safeParse(args);
+          if (!parseResult.success) {
+            const errorMessages = parseResult.error.errors.map(err => 
+              `${err.path.join('.')}: ${err.message}`
+            ).join('; ');
+            throw new Error(`Invalid arguments: ${errorMessages}`);
+          }
+
+          const result = await getCashflow12MonthReport(parseResult.data);
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify(result, null, 2),
+                mimeType: "application/json"
+              }
+            ]
+          };
+        } catch (error) {
+          // Enhanced error reporting for debugging
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error(`Cashflow 12 Month Report Error:`, errorMessage);
+          throw error;
+        }
       }
     );
   }

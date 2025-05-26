@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Resident Financial Activity Report Types ---
 export type ResidentFinancialActivityArgs = {
@@ -51,11 +52,11 @@ export type ResidentFinancialActivityResult = {
 const residentFinancialActivityInputSchema = z.object({
   property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional()
-  }).optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report'))
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
   occurred_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
   occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format"),
   include_voided: z.boolean().optional().default(false),
@@ -67,6 +68,12 @@ export async function getResidentFinancialActivityReport(args: ResidentFinancial
     throw new Error('Missing required arguments: occurred_on_from and occurred_on_to (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -76,19 +83,35 @@ export async function getResidentFinancialActivityReport(args: ResidentFinancial
 export function registerResidentFinancialActivityReportTool(server: McpServer) {
   server.tool(
     "get_resident_financial_activity_report",
-    "Returns resident financial activity report for the given filters.",
+    "Returns resident financial activity report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     residentFinancialActivityInputSchema.shape,
-    async (args: any, _extra: any) => {
-      const data = await getResidentFinancialActivityReport(args as ResidentFinancialActivityArgs);
-      return {
-        content: [
-          {
-            type: "text",
-            text: JSON.stringify(data),
-            mimeType: "application/json"
-          }
-        ]
-      };
+    async (args, _extra: unknown) => {
+      try {
+        // Validate arguments against schema
+        const parseResult = residentFinancialActivityInputSchema.safeParse(args);
+        if (!parseResult.success) {
+          const errorMessages = parseResult.error.errors.map(err => 
+            `${err.path.join('.')}: ${err.message}`
+          ).join('; ');
+          throw new Error(`Invalid arguments: ${errorMessages}`);
+        }
+
+        const result = await getResidentFinancialActivityReport(parseResult.data);
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify(result, null, 2),
+              mimeType: "application/json"
+            }
+          ]
+        };
+      } catch (error) {
+        // Enhanced error reporting for debugging
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error(`Resident Financial Activity Report Error:`, errorMessage);
+        throw error;
+      }
     }
   );
 }

@@ -49,15 +49,29 @@ exports.delinquencyAsOfInputSchema = zod_1.z.object({
 });
 function registerDelinquencyAsOfReportTool(server) {
     server.tool("get_delinquency_as_of_report", "Returns delinquency as of report for the given filters.", exports.delinquencyAsOfInputSchema.shape, async (args, _extra) => {
-        const data = await getDelinquencyAsOfReport(args); // Cast args
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+        try {
+            // Validate arguments against schema
+            const parseResult = exports.delinquencyAsOfInputSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getDelinquencyAsOfReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Delinquency As Of Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

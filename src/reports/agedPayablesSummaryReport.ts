@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Type definitions copied from src/appfolio.ts
 export type AgedPayablesSummaryArgs = {
@@ -53,11 +54,11 @@ export type AgedPayablesSummaryResult = {
 const agedPayablesSummaryInputSchema = z.object({
   property_visibility: z.string().default("active"),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'Owner Directory Report')),
+  }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
   occurred_on: z.string(),
   party_contact_info: z.object({
     company_id: z.string().optional()
@@ -75,6 +76,12 @@ export async function getAgedPayablesSummaryReport(args: AgedPayablesSummaryArgs
     throw new Error('Missing required argument: occurred_on (format YYYY-MM-DD)');
   }
 
+  // Validate ID fields
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
@@ -85,7 +92,7 @@ export async function getAgedPayablesSummaryReport(args: AgedPayablesSummaryArgs
 export function registerAgedPayablesSummaryReportTool(server: McpServer) {
   server.tool(
     "get_aged_payables_summary_report",
-    "Returns aged payables summary for the given filters.",
+    "Returns aged payables summary for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     agedPayablesSummaryInputSchema.shape,
     async (args: any, _extra: any) => {
       // Zod schema handles defaults

@@ -39,16 +39,30 @@ async function getIncomeStatementDateRangeReport(args) {
 // New registration function for MCP
 function registerIncomeStatementDateRangeReportTool(server) {
     server.tool("get_income_statement_date_range_report", "Returns the income statement report for a specified date range.", // Description from original registration
-    incomeStatementDateRangeArgsSchema.shape, async (toolArgs) => {
-        const data = await getIncomeStatementDateRangeReport(toolArgs);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    incomeStatementDateRangeArgsSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = incomeStatementDateRangeArgsSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getIncomeStatementDateRangeReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Income Statement Date Range Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }

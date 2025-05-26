@@ -45,16 +45,30 @@ async function getWorkOrderReport(args) {
     return (0, appfolio_1.makeAppfolioApiCall)('work_order.json', payload);
 }
 function registerWorkOrderReportTool(server) {
-    server.tool("get_work_order_report", "Generates a report on work orders.", workOrderArgsSchema.shape, async (args, _extra) => {
-        const data = await getWorkOrderReport(args);
-        return {
-            content: [
-                {
-                    type: "text",
-                    text: JSON.stringify(data),
-                    mimeType: "application/json"
-                }
-            ]
-        };
+    server.tool("get_work_order_report", "Generates a report on work orders. IMPORTANT: All ID parameters (unit_ids, property_id, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.", workOrderArgsSchema.shape, async (args, _extra) => {
+        try {
+            // Validate arguments against schema
+            const parseResult = workOrderArgsSchema.safeParse(args);
+            if (!parseResult.success) {
+                const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
+                throw new Error(`Invalid arguments: ${errorMessages}`);
+            }
+            const result = await getWorkOrderReport(parseResult.data);
+            return {
+                content: [
+                    {
+                        type: "text",
+                        text: JSON.stringify(result, null, 2),
+                        mimeType: "application/json"
+                    }
+                ]
+            };
+        }
+        catch (error) {
+            // Enhanced error reporting for debugging
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error(`Work Order Report Error:`, errorMessage);
+            throw error;
+        }
     });
 }
