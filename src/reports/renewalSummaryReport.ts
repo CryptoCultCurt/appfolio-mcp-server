@@ -1,6 +1,50 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { makeAppfolioApiCall } from '../appfolio';
+import dotenv from 'dotenv';
+import { makeAppfolioApiCall } from '../appfolio.js';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation.js';
+
+dotenv.config();
+
+// Available columns extracted from the RenewalSummaryResult type
+export const RENEWAL_SUMMARY_COLUMNS = [
+  'unit_name',
+  'property',
+  'property_name',
+  'property_id',
+  'property_address',
+  'property_street',
+  'property_street2',
+  'property_city',
+  'property_state',
+  'property_zip',
+  'unit_type',
+  'unit_id',
+  'occupancy_id',
+  'tenant_name',
+  'lease_start',
+  'lease_end',
+  'previous_lease_start',
+  'previous_lease_end',
+  'previous_rent',
+  'rent',
+  'respond_by_date',
+  'renewal_sent_date',
+  'countersigned_date',
+  'automatic_renewal_date',
+  'percent_difference',
+  'dollar_difference',
+  'status',
+  'term',
+  'lease_start_month',
+  'tenant_id',
+  'tenant_tags',
+  'tenant_agent',
+  'lease_uuid',
+  'lease_document_uuid',
+  'notice_given_date',
+  'move_out'
+] as const;
 
 // TODO: Update RenewalSummaryArgs to use expiring_from and expiring_to instead of start_on_from and start_on_to
 export type RenewalStatus = "all" | "awaiting_response" | "countersigned" | "pending" | "skipped" | "notice_to_vacate";
@@ -66,21 +110,32 @@ export type RenewalSummaryResult = {
 const renewalStatusSchema = z.enum(["all", "awaiting_response", "countersigned", "pending", "skipped", "notice_to_vacate"]);
 const renewalSummaryArgsSchema = z.object({
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
+    properties_ids: z.array(z.string()).optional()
+      .describe(getIdFieldDescription('property', 'Property Directory Report')),
+    property_groups_ids: z.array(z.string()).optional()
+      .describe(getIdFieldDescription('property group', 'Property Group Directory Report')),
+    portfolios_ids: z.array(z.string()).optional()
+      .describe(getIdFieldDescription('portfolio', 'Portfolio Directory Report')),
     owners_ids: z.array(z.string()).optional()
+      .describe(getIdFieldDescription('owner', 'Owner Directory Report'))
   }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
   unit_visibility: z.enum(["active", "hidden", "all"]).optional().describe('Filter units by status. Defaults to "active"'),
   start_on_from: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The start month for the reporting period based on lease start date (YYYY-MM). Required.'),
   start_on_to: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The end month for the reporting period based on lease start date (YYYY-MM). Required.'),
-  statuses: z.array(renewalStatusSchema).optional().default(["all"]).describe('Filter by renewal status. Defaults to [\"all\"]'),
+  statuses: z.array(renewalStatusSchema).optional().default(["all"]).describe('Filter by renewal status. Defaults to ["all"]'),
   include_tenant_transfers: z.enum(["0", "1"]).optional().describe('Include tenant transfers in the report. Defaults to "0" (false)'),
-  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
+  columns: z.array(z.enum(RENEWAL_SUMMARY_COLUMNS)).optional()
+    .describe(`Array of specific columns to include in the report. Valid columns: ${RENEWAL_SUMMARY_COLUMNS.join(', ')}. If not specified, all columns are returned.`)
 });
 
 // --- Renewal Summary Report Function ---
 export async function getRenewalSummaryReport(args: RenewalSummaryArgs): Promise<RenewalSummaryResult> {
+  // Validate properties IDs if provided
+  if (args.properties) {
+    const validationErrors = validatePropertiesIds(args.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+
   if (!args.start_on_from || !args.start_on_to) {
     throw new Error('Missing required arguments: start_on_from and start_on_to (format YYYY-MM)');
   }
@@ -101,7 +156,7 @@ export async function getRenewalSummaryReport(args: RenewalSummaryArgs): Promise
 export function registerRenewalSummaryReportTool(server: McpServer) {
   server.tool(
     "get_renewal_summary_report",
-    "Provides a summary of lease renewals.",
+    "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
     renewalSummaryArgsSchema.shape,
     async (args, _extra: unknown) => {
       try {

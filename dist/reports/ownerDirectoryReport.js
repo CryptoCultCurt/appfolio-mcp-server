@@ -22,7 +22,7 @@ exports.ownerDirectoryArgsSchema = zod_1.z.object({
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional(),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional(),
     }).optional().describe("Filter results based on properties, groups, portfolios, or owners."),
-    tags: zod_1.z.string().optional().describe("Comma-separated list of tags, e.g., 'bbq,deck'"),
+    tags: zod_1.z.string().optional().describe("FILTER BY SYSTEM TAGS ONLY: Comma-separated list of actual tags assigned to owners in the system (e.g., 'vip,corporate'). NOT for searching by owner names - use the full report results for name searching."),
     owner_visibility: zod_1.z.string().optional().default("active").describe("Filter owners by visibility. Defaults to 'active'."),
     created_by: zod_1.z.string().optional().default("All").describe("Filter by who created the owner. Defaults to 'All'."),
     columns: zod_1.z.array(exports.ownerDirectoryColumnEnum).optional().describe("List of columns to include in the report. If omitted, default columns are used."),
@@ -33,7 +33,7 @@ async function getOwnerDirectoryReport(args) {
 }
 // --- Register Owner Directory Report Tool ---
 function registerOwnerDirectoryReportTool(server) {
-    server.tool("get_owner_directory_report", "Retrieves an owner directory report with details about property owners. IMPORTANT: All ID parameters (properties_ids, portfolios_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use Property Directory Report first to lookup property IDs by name if needed.", exports.ownerDirectoryArgsSchema.shape, async (args, _extra) => {
+    server.tool("get_owner_directory_report", "Retrieves a DIRECTORY report with details about property owners. This returns ALL owners (with optional filters) - to find specific owners by name, call this report and search the results client-side. IMPORTANT: All ID parameters must be numeric strings, NOT names. The 'tags' parameter is for filtering by actual system tags, NOT for text search.", exports.ownerDirectoryArgsSchema.shape, async (args, _extra) => {
         try {
             // Validate arguments against schema
             const parseResult = exports.ownerDirectoryArgsSchema.safeParse(args);

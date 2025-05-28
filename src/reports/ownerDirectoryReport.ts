@@ -71,7 +71,7 @@ export const ownerDirectoryArgsSchema = z.object({
     portfolios_ids: z.array(z.string()).optional(),
     owners_ids: z.array(z.string()).optional(),
   }).optional().describe("Filter results based on properties, groups, portfolios, or owners."),
-  tags: z.string().optional().describe("Comma-separated list of tags, e.g., 'bbq,deck'"),
+  tags: z.string().optional().describe("FILTER BY SYSTEM TAGS ONLY: Comma-separated list of actual tags assigned to owners in the system (e.g., 'vip,corporate'). NOT for searching by owner names - use the full report results for name searching."),
   owner_visibility: z.string().optional().default("active").describe("Filter owners by visibility. Defaults to 'active'."),
   created_by: z.string().optional().default("All").describe("Filter by who created the owner. Defaults to 'All'."),
   columns: z.array(ownerDirectoryColumnEnum).optional().describe("List of columns to include in the report. If omitted, default columns are used."),
@@ -86,7 +86,7 @@ export async function getOwnerDirectoryReport(args: z.infer<typeof ownerDirector
 export function registerOwnerDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_owner_directory_report",
-    "Retrieves an owner directory report with details about property owners. IMPORTANT: All ID parameters (properties_ids, portfolios_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use Property Directory Report first to lookup property IDs by name if needed.",
+    "Retrieves a DIRECTORY report with details about property owners. This returns ALL owners (with optional filters) - to find specific owners by name, call this report and search the results client-side. IMPORTANT: All ID parameters must be numeric strings, NOT names. The 'tags' parameter is for filtering by actual system tags, NOT for text search.",
     ownerDirectoryArgsSchema.shape,
     async (args, _extra: unknown) => {
       try {

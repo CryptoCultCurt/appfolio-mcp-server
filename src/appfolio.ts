@@ -48,6 +48,7 @@ import { getUnitInspectionReport, UnitInspectionArgs, UnitInspectionResult } fro
 import { getUnitVacancyDetailReport, UnitVacancyDetailArgs, UnitVacancyDetailResult } from './reports/unitVacancyDetail';
 import { getVendorDirectoryReport, VendorDirectoryArgs, VendorDirectoryResult } from './reports/vendorDirectoryReport';
 import { getWorkOrderReport, WorkOrderArgs, WorkOrderResult } from './reports/workOrderReport';
+import { getPropertyGroupDirectoryReport, PropertyGroupDirectoryArgs, PropertyGroupDirectoryResult } from './reports/propertyGroupDirectoryReport';
 
 export const appfolioLimiter = new Bottleneck({
   reservoir: 200, // initial value
@@ -304,4 +305,9 @@ export {
   getUnitInspectionReport,
   UnitInspectionArgs,
   UnitInspectionResult,
+
+  // Imported from ./reports/propertyGroupDirectoryReport
+  getPropertyGroupDirectoryReport,
+  PropertyGroupDirectoryArgs,
+  PropertyGroupDirectoryResult,
 };

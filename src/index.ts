@@ -39,6 +39,7 @@ import { registerSecurityDepositFundsDetailReportTool } from "./reports/security
 import { registerTenantDirectoryReportTool } from "./reports/tenantDirectoryReport";
 import { registerTrialBalanceByPropertyReportTool } from "./reports/trialBalanceByPropertyReport";
 import { registerPropertyDirectoryReportTool } from "./reports/propertyDirectoryReport";
+import { registerPropertyGroupDirectoryReportTool } from "./reports/propertyGroupDirectoryReport";
 import { registerCashflow12MonthReportTool } from "./reports/cashflow12MonthReport";
 import { registerIncomeStatement12MonthReportTool } from "./reports/incomeStatement12MonthReport";
 import { registerUnitDirectoryReportTool } from "./reports/unitDirectoryReport";
@@ -96,6 +97,7 @@ registerTenantDirectoryReportTool(server);
 registerTenantLedgerReportTool(server);
 registerTrialBalanceByPropertyReportTool(server);
 registerPropertyDirectoryReportTool(server);
+registerPropertyGroupDirectoryReportTool(server);
 registerCashflow12MonthReportTool(server);
 registerIncomeStatement12MonthReportTool(server);
 registerUnitDirectoryReportTool(server);

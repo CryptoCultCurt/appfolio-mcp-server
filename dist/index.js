@@ -40,6 +40,7 @@ const securityDepositFundsDetailReport_1 = require("./reports/securityDepositFun
 const tenantDirectoryReport_1 = require("./reports/tenantDirectoryReport");
 const trialBalanceByPropertyReport_1 = require("./reports/trialBalanceByPropertyReport");
 const propertyDirectoryReport_1 = require("./reports/propertyDirectoryReport");
+const propertyGroupDirectoryReport_1 = require("./reports/propertyGroupDirectoryReport");
 const cashflow12MonthReport_1 = require("./reports/cashflow12MonthReport");
 const incomeStatement12MonthReport_1 = require("./reports/incomeStatement12MonthReport");
 const unitDirectoryReport_1 = require("./reports/unitDirectoryReport");
@@ -94,6 +95,7 @@ const transport = new stdio_js_1.StdioServerTransport();
 (0, tenantLedgerReport_1.registerTenantLedgerReportTool)(server);
 (0, trialBalanceByPropertyReport_1.registerTrialBalanceByPropertyReportTool)(server);
 (0, propertyDirectoryReport_1.registerPropertyDirectoryReportTool)(server);
+(0, propertyGroupDirectoryReport_1.registerPropertyGroupDirectoryReportTool)(server);
 (0, cashflow12MonthReport_1.registerCashflow12MonthReportTool)(server);
 (0, incomeStatement12MonthReport_1.registerIncomeStatement12MonthReportTool)(server);
 (0, unitDirectoryReport_1.registerUnitDirectoryReportTool)(server);
