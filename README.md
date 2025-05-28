@@ -37,3 +37,5 @@ npm install @fluegeldao/appfolio-mcp-server
 ```bash
 npx @fluegeldao/appfolio-mcp-server
 ```
+
+[![smithery badge](https://smithery.ai/badge/@CryptoCultCurt/appfolio-mcp-server)](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server)
