@@ -1,0 +1,29 @@
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+
+startCommand:
+  type: stdio
+  commandFunction:
+    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+    |-
+    (config) => ({ command: 'node', args: ['dist/index.js'], env: { VHOST: config.vhost, USERNAME: config.username, PASSWORD: config.password } })
+  configSchema:
+    # JSON Schema defining the configuration options for the MCP.
+    type: object
+    required:
+      - vhost
+      - username
+      - password
+    properties:
+      vhost:
+        type: string
+        description: Your Appfolio hostname
+      username:
+        type: string
+        description: Your Appfolio API username
+      password:
+        type: string
+        description: Your Appfolio API password
+  exampleConfig:
+    vhost: yourcompany
+    username: api_user@example.com
+    password: secret_password
