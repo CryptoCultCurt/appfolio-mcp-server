@@ -17,7 +17,7 @@ export type WorkOrderArgs = {
   assigned_user?: string; // User ID or "All", defaults to "All"
   created_by?: string; // User ID or "All", defaults to "All"
   priority?: "All" | "Low" | "Medium" | "High" | "Urgent"; // Defaults to "All"
-  from_inspection?: boolean | null; // Defaults to null/omit
+  from_inspection?: boolean; // Defaults to false
   current_estimate_approval_status?: "All" | "Pending" | "Approved" | "Declined"; // Defaults to "All"
   work_order_statuses?: string[]; // List of status IDs
   work_order_types?: Array<"unit_turn" | "tenant_requested" | "other">; // List of types
@@ -111,17 +111,100 @@ export type WorkOrderResult = {
   next_page_url: string | null;
 };
 
-// Zod schema for Work Order Report arguments
-const workOrderArgsSchema = z.object({
+// Valid columns for the work order report
+const VALID_WORK_ORDER_COLUMNS = [
+  "property",
+  "property_name", 
+  "property_id",
+  "property_address",
+  "property_street",
+  "property_street2", 
+  "property_city",
+  "property_state",
+  "property_zip",
+  "unit_address",
+  "unit_street",
+  "unit_street2",
+  "unit_city", 
+  "unit_state",
+  "unit_zip",
+  "priority",
+  "work_order_type",
+  "service_request_number",
+  "service_request_description",
+  "home_warranty_expiration",
+  "work_order_number",
+  "job_description",
+  "instructions",
+  "status",
+  "vendor_id",
+  "vendor",
+  "unit_id",
+  "unit_name",
+  "occupancy_id",
+  "primary_tenant",
+  "primary_tenant_email",
+  "primary_tenant_phone_number",
+  "created_at",
+  "created_by",
+  "assigned_user",
+  "estimate_req_on",
+  "estimated_on",
+  "estimate_amount",
+  "estimate_approval_status",
+  "estimate_approved_on",
+  "estimate_approval_last_requested_on",
+  "scheduled_start",
+  "scheduled_end", 
+  "work_completed_on",
+  "completed_on",
+  "last_billed_on",
+  "canceled_on",
+  "amount",
+  "invoice",
+  "unit_turn_id",
+  "corporate_charge_amount",
+  "corporate_charge_id",
+  "discount_amount",
+  "discount_bill_id",
+  "markup_amount",
+  "markup_bill_id",
+  "tenant_total_charge_amount",
+  "tenant_charge_ids",
+  "vendor_bill_amount",
+  "vendor_bill_id",
+  "vendor_charge_amount",
+  "vendor_charge_id",
+  "inspection_id",
+  "inspection_date",
+  "work_order_id",
+  "service_request_id",
+  "recurring",
+  "submitted_by_tenant",
+  "requesting_tenant",
+  "maintenance_limit",
+  "status_notes",
+  "follow_up_on",
+  "vendor_trade",
+  "unit_turn_category",
+  "work_order_issue",
+  "survey_id",
+  "vendor_portal_invoices"
+] as const;
+
+// Zod schema for Work Order Report arguments  
+const workOrderArgsBaseSchema = z.object({
   property_visibility: z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter properties by status. Defaults to "active".'),
   unit_ids: z.array(z.string()).optional().describe('Optional. Filter by specific unit IDs.'),
-  property: z.object({ property_id: z.string() }).optional().describe('Optional. Filter by a single property ID.'),
+  property: z.object({ 
+    property_id: z.string().describe(getIdFieldDescription('property_id', 'Property', 'property directory report'))
+  }).optional().describe('Optional. Filter by a single property ID.'),
   parties_ids: z.object({ occupancies_ids: z.array(z.string()).optional() }).optional().describe('Optional. Filter by specific occupancy IDs.'),
   party_contact_info: z.object({ company_id: z.string() }).optional().describe('Optional. Filter by a specific vendor ID (company).'),
   assigned_user: z.string().optional().default("All").describe('Filter by assigned user ID or "All". Defaults to "All".'),
   created_by: z.string().optional().default("All").describe('Filter by creator user ID or "All". Defaults to "All".'),
   priority: z.enum(["All", "Low", "Medium", "High", "Urgent"]).optional().default("All").describe('Filter by priority. Defaults to "All".'),
-  from_inspection: z.boolean().nullable().optional().describe('Optional. Filter by whether the work order originated from an inspection. Set to null to omit filter.'),
+  from_inspection: z.boolean().optional().default(false).describe('Optional. Filter by whether the work order originated from an inspection. Defaults to false.'),
   current_estimate_approval_status: z.enum(["All", "Pending", "Approved", "Declined"]).optional().default("All").describe('Filter by estimate approval status. Defaults to "All".'),
   work_order_statuses: z.array(z.string()).optional().describe('Optional. Filter by specific work order status IDs.'),
   work_order_types: z.array(z.enum(["unit_turn", "tenant_requested", "other"])).optional().describe('Optional. Filter by specific work order types.'),
@@ -129,10 +212,53 @@ const workOrderArgsSchema = z.object({
   status_date_range_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional().describe('Optional. Start date for status date range filter (YYYY-MM-DD).'),
   status_date_range_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional().describe('Optional. End date for status date range filter (YYYY-MM-DD).'),
   status_date: z.enum(["all", "created_at", "completed_on"]).optional().default("all").describe('Field to use for status date range filtering. Defaults to "all".'),
-  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
+  columns: z.array(z.enum(VALID_WORK_ORDER_COLUMNS as readonly [string, ...string[]])).optional().describe(`Array of specific columns to include in the report. Valid columns: ${VALID_WORK_ORDER_COLUMNS.join(', ')}`)
 });
 
-export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrderResult> {
+const workOrderArgsSchema = workOrderArgsBaseSchema.superRefine((data, ctx) => {
+  // Validate property ID if provided
+  if (data.property?.property_id) {
+    const validationErrors = validatePropertiesIds({ properties_ids: [data.property.property_id] });
+    throwOnValidationErrors(validationErrors);
+  }
+  
+  // Validate unit IDs if provided
+  if (data.unit_ids) {
+    for (let i = 0; i < data.unit_ids.length; i++) {
+      if (!/^\d+$/.test(data.unit_ids[i])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['unit_ids', i],
+          message: 'Unit ID must be a numeric string'
+        });
+      }
+    }
+  }
+  
+  // Validate occupancy IDs if provided
+  if (data.parties_ids?.occupancies_ids) {
+    for (let i = 0; i < data.parties_ids.occupancies_ids.length; i++) {
+      if (!/^\d+$/.test(data.parties_ids.occupancies_ids[i])) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['parties_ids', 'occupancies_ids', i],
+          message: 'Occupancy ID must be a numeric string'
+        });
+      }
+    }
+  }
+  
+  // Validate company ID if provided
+  if (data.party_contact_info?.company_id && !/^\d+$/.test(data.party_contact_info.company_id)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['party_contact_info', 'company_id'],
+      message: 'Company ID must be a numeric string'
+    });
+  }
+});
+
+export async function getWorkOrderReport(args: z.infer<typeof workOrderArgsSchema>): Promise<WorkOrderResult> {
   const {
     property_visibility = "active",
     assigned_user = "All",
@@ -141,7 +267,7 @@ export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrder
     current_estimate_approval_status = "All",
     status_date = "all",
     unit_turn_category = ["all"], // Default based on API description
-    from_inspection = null, // Explicitly set default
+    from_inspection = false, // Explicitly set default
     ...rest
   } = args;
 
@@ -156,8 +282,8 @@ export async function getWorkOrderReport(args: WorkOrderArgs): Promise<WorkOrder
     ...rest
   };
 
-  // Only include from_inspection if it's not null
-  if (from_inspection !== null) {
+  // Only include from_inspection if it's not false
+  if (from_inspection) {
     payload.from_inspection = from_inspection;
   }
 
@@ -168,8 +294,8 @@ export function registerWorkOrderReportTool(server: McpServer) {
   server.tool(
     "get_work_order_report",
     "Generates a report on work orders. IMPORTANT: All ID parameters (unit_ids, property_id, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    workOrderArgsSchema.shape,
-    async (args, _extra: unknown) => {
+    workOrderArgsBaseSchema.shape,
+    async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema
         const parseResult = workOrderArgsSchema.safeParse(args);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // --- Aged Receivables Detail Report Types ---
 export type AgedReceivablesDetailArgs = {
@@ -69,29 +70,90 @@ export type AgedReceivablesDetailResult = {
   next_page_url: string;
 };
 
-// Originally from src/index.ts (lines 42-78)
-const agedReceivablesDetailInputSchema = z.object({
-  property_visibility: z.string().default("active"),
+// Valid columns for the aged receivables detail report
+const VALID_AGED_RECEIVABLES_COLUMNS = [
+  "payer_name",
+  "property", 
+  "property_name",
+  "property_id",
+  "property_address",
+  "property_street",
+  "property_street2", 
+  "property_city",
+  "property_state",
+  "property_zip",
+  "invoice_occurred_on",
+  "account_number",
+  "account_name",
+  "account_id",
+  "total_amount",
+  "amount_receivable",
+  "future_charges",
+  "0_to30",
+  "30_to60", 
+  "60_to90",
+  "90_plus",
+  "30_plus",
+  "60_plus",
+  "occupancy_name",
+  "account",
+  "unit_address",
+  "unit_street",
+  "unit_street2",
+  "unit_city",
+  "unit_state", 
+  "unit_zip",
+  "unit_name",
+  "unit_type",
+  "unit_tags",
+  "tenant_status",
+  "payment_plan",
+  "txn_id",
+  "occupancy_id",
+  "unit_id"
+] as const;
+
+// Base schema for shape compatibility
+const agedReceivablesDetailBaseSchema = z.object({
+  property_visibility: z.string().default("active").describe('Filter properties by status. Defaults to "active".'),
   properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  tags: z.string().optional(),
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'property directory report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group', 'property group directory report')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio', 'portfolio directory report')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'owner directory report')),
+  }).optional().describe('Optional. Filter by specific property-related IDs.'),
+  tags: z.string().optional().describe('Optional. Filter by property tags.'),
   balance_operator: z.object({
-    amount: z.string().optional(),
-    comparator: z.string().optional()
-  }).optional(),
-  tenant_statuses: z.array(z.string()).optional(),
-  occurred_on_to: z.string(),
-  gl_account_map_id: z.string().optional(),
-  columns: z.array(z.string()).optional(),
-  as_of: z.string(),
+    amount: z.string().optional().describe('Optional. Balance amount to compare against.'),
+    comparator: z.string().optional().describe('Optional. Comparison operator for balance amount.')
+  }).optional().describe('Optional. Filter by balance amount with comparison operator.'),
+  tenant_statuses: z.array(z.string()).optional().describe('Optional. Filter by tenant status.'),
+  occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('End date for transaction occurrence filter (YYYY-MM-DD format).'),
+  gl_account_map_id: z.string().optional().describe('Optional. General ledger account map ID.'),
+  columns: z.array(z.enum(VALID_AGED_RECEIVABLES_COLUMNS as readonly [string, ...string[]])).optional().describe(`Array of specific columns to include in the report. Valid columns: ${VALID_AGED_RECEIVABLES_COLUMNS.join(', ')}`),
+  as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('As-of date for the aged receivables report (YYYY-MM-DD format).'),
+});
+
+// Schema with validation
+const agedReceivablesDetailInputSchema = agedReceivablesDetailBaseSchema.superRefine((data, ctx) => {
+  // Validate property-related IDs if provided
+  if (data.properties) {
+    const validationErrors = validatePropertiesIds(data.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+  
+  // Validate GL account map ID if provided
+  if (data.gl_account_map_id && data.gl_account_map_id !== "" && !/^\d+$/.test(data.gl_account_map_id)) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['gl_account_map_id'],
+      message: 'GL Account Map ID must be a numeric string'
+    });
+  }
 });
 
 // Originally from src/appfolio.ts (function starting line 1664)
-export async function getAgedReceivablesDetailReport(args: AgedReceivablesDetailArgs): Promise<AgedReceivablesDetailResult> {
+export async function getAgedReceivablesDetailReport(args: z.infer<typeof agedReceivablesDetailInputSchema>): Promise<AgedReceivablesDetailResult> {
   if (!args.as_of) {
     throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
   }
@@ -106,9 +168,9 @@ export async function getAgedReceivablesDetailReport(args: AgedReceivablesDetail
 export function registerAgedReceivablesDetailReportTool(server: McpServer) {
   server.tool(
     "get_aged_receivables_detail_report",
-    "Returns aged receivables detail for the given filters.",
-    agedReceivablesDetailInputSchema.shape,
-    async (args, _extra: unknown) => {
+    "Returns aged receivables detail for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
+    agedReceivablesDetailBaseSchema.shape,
+    async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema
         const parseResult = agedReceivablesDetailInputSchema.safeParse(args);

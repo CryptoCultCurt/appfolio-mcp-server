@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 export type DelinquencyColumn =
   | 'unit'
@@ -60,7 +61,7 @@ export type DelinquencyAsOfArgs = {
     portfolios_ids?: string[];
     owners_ids?: string[];
   };
-  as_of: string; 
+  occurred_on_to: string; 
   delinquency_note_range?: string;
   tenant_statuses?: string[]; 
   tags?: string;
@@ -115,9 +116,39 @@ export type DelinquencyAsOfResult = {
   next_page_url: string;
 };
 
-export async function getDelinquencyAsOfReport(args: DelinquencyAsOfArgs): Promise<DelinquencyAsOfResult> {
-  if (!args.as_of) {
-    throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
+// Base schema for shape compatibility
+export const delinquencyAsOfBaseSchema = z.object({
+  property_visibility: z.string().default("active").optional().describe('Filter properties by status. Defaults to "active".'),
+  properties: z.object({
+    properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'property directory report')),
+    property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group', 'property group directory report')),
+    portfolios_ids: z.array(z.string()).optional().describe(getIdFieldDescription('portfolios_ids', 'Portfolio', 'portfolio directory report')),
+    owners_ids: z.array(z.string()).optional().describe(getIdFieldDescription('owners_ids', 'Owner', 'owner directory report')),
+  }).optional().describe('Optional. Filter by specific property-related IDs.'),
+  occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe("Required. Date to run the report as of in YYYY-MM-DD format."), 
+  delinquency_note_range: z.string().optional().describe('Optional. Filter by delinquency note range.'),
+  tenant_statuses: z.array(z.string()).default(["0", "4"].slice()).optional().describe('Filter by tenant status. Defaults to ["0", "4"].'), 
+  tags: z.string().optional().describe('Optional. Filter by property tags.'),
+  amount_owed_in_account: z.string().default("all").optional().describe('Filter by amount owed in account. Defaults to "all".'), 
+  balance_operator: z.object({
+    amount: z.string().optional().describe('Optional. Balance amount to compare against.'),
+    comparator: z.string().optional().describe('Optional. Comparison operator for balance amount.')
+  }).optional().describe('Optional. Filter by balance amount with comparison operator.'),
+  columns: z.array(z.enum(delinquencyColumnsList as [DelinquencyColumn, ...DelinquencyColumn[]])).optional().describe(`Array of specific columns to include in the report. Valid columns: ${delinquencyColumnsList.join(', ')}`)
+});
+
+// Schema with validation
+export const delinquencyAsOfInputSchema = delinquencyAsOfBaseSchema.superRefine((data, ctx) => {
+  // Validate property-related IDs if provided
+  if (data.properties) {
+    const validationErrors = validatePropertiesIds(data.properties);
+    throwOnValidationErrors(validationErrors);
+  }
+});
+
+export async function getDelinquencyAsOfReport(args: z.infer<typeof delinquencyAsOfInputSchema>): Promise<DelinquencyAsOfResult> {
+  if (!args.occurred_on_to) {
+    throw new Error('Missing required argument: occurred_on_to (format YYYY-MM-DD)');
   }
 
   const { 
@@ -127,42 +158,39 @@ export async function getDelinquencyAsOfReport(args: DelinquencyAsOfArgs): Promi
     ...rest 
   } = args;
 
-  const payload = {
+  // Build payload, filtering out empty strings and empty objects
+  const payload: any = {
     property_visibility,
     tenant_statuses,
     amount_owed_in_account,
-    ...rest
   };
+
+  // Add non-empty fields from rest
+  Object.entries(rest).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== "") {
+      // Skip empty objects (like balance_operator with empty amount/comparator)
+      if (typeof value === 'object' && !Array.isArray(value)) {
+        const filteredObj = Object.fromEntries(
+          Object.entries(value).filter(([_, v]) => v !== undefined && v !== null && v !== "")
+        );
+        if (Object.keys(filteredObj).length > 0) {
+          payload[key] = filteredObj;
+        }
+      } else {
+        payload[key] = value;
+      }
+    }
+  });
 
   return makeAppfolioApiCall<DelinquencyAsOfResult>('delinquency_as_of.json', payload);
 }
 
-export const delinquencyAsOfInputSchema = z.object({
-  property_visibility: z.string().default("active").optional(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
-  as_of: z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."), 
-  delinquency_note_range: z.string().optional(),
-  tenant_statuses: z.array(z.string()).default(["0", "4"].slice()).optional(), 
-  tags: z.string().optional(),
-  amount_owed_in_account: z.string().default("all").optional(), 
-  balance_operator: z.object({
-    amount: z.string().optional(),
-    comparator: z.string().optional()
-  }).optional(),
-  columns: z.array(z.nativeEnum(Object.fromEntries(delinquencyColumnsList.map(col => [col, col])))).optional()
-});
-
 export function registerDelinquencyAsOfReportTool(server: McpServer) {
   server.tool(
     "get_delinquency_as_of_report",
-    "Returns delinquency as of report for the given filters.",
-    delinquencyAsOfInputSchema.shape,
-    async (args, _extra: unknown) => {
+    "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
+    delinquencyAsOfBaseSchema.shape,
+    async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema
         const parseResult = delinquencyAsOfInputSchema.safeParse(args);
@@ -173,7 +201,7 @@ export function registerDelinquencyAsOfReportTool(server: McpServer) {
           throw new Error(`Invalid arguments: ${errorMessages}`);
         }
 
-        const result = await getDelinquencyAsOfReport(parseResult.data as DelinquencyAsOfArgs);
+        const result = await getDelinquencyAsOfReport(parseResult.data);
         return {
           content: [
             {
