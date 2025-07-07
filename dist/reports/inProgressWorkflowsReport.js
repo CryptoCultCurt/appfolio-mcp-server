@@ -5,6 +5,16 @@ exports.registerInProgressWorkflowsReportTool = registerInProgressWorkflowsRepor
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
 const validation_1 = require("../validation");
+// Valid columns for in-progress workflows report
+const VALID_IN_PROGRESS_WORKFLOW_COLUMNS = [
+    "attachable_for",
+    "property",
+    "workflow_name",
+    "current_step",
+    "status",
+    "due_date",
+    "assigned_to"
+];
 // Originally from src/index.ts (line 76), with defaults added
 const inProgressWorkflowsArgsSchema = zod_1.z.object({
     attachables: zod_1.z.object({
@@ -26,7 +36,7 @@ const inProgressWorkflowsArgsSchema = zod_1.z.object({
     }).optional().describe('Filter results based on properties, groups, or portfolios. All ID fields must be numeric strings, not names.'),
     process_template: zod_1.z.string().default("All").optional().describe('Filter by specific process template name. Defaults to "All"'),
     workflow_step: zod_1.z.string().default("All").optional().describe('Filter by specific workflow step name. Defaults to "All"'),
-    assigned_user: zod_1.z.string().default("All").optional().describe('Filter by assigned user name. Defaults to "All"'),
+    assigned_user: zod_1.z.string().default("All").optional().describe('Filter by assigned user ID or "All". Defaults to "All". NOTE: Expects numeric user IDs (e.g. "4"), not user names. There is no user directory report available to lookup IDs by name.'),
     date_range_from: zod_1.z.string().optional().describe('Start date for the due date range (YYYY-MM-DD)'),
     date_range_to: zod_1.z.string().optional().describe('End date for the due date range (YYYY-MM-DD)'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
@@ -44,7 +54,7 @@ async function getInProgressWorkflowsReport(args) {
     (0, validation_1.throwOnValidationErrors)(validationErrors);
     const { property_visibility = "active", ...rest } = args;
     const payload = { property_visibility, ...rest };
-    return (0, appfolio_1.makeAppfolioApiCall)('in_progress_processes.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('in_progress_workflows.json', payload);
 }
 // New registration function for MCP
 function registerInProgressWorkflowsReportTool(server) {

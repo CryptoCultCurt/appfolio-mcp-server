@@ -16,7 +16,11 @@ const vendorLedgerInputSchema = zod_1.z.object({
     }).optional(),
     occurred_on_from: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The start date for the reporting period (YYYY-MM-DD).'),
     occurred_on_to: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The end date for the reporting period (YYYY-MM-DD).'),
-    reverse_transaction: zod_1.z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include reversed transactions. Defaults to false.'),
+    reverse_transaction: zod_1.z.union([zod_1.z.boolean(), zod_1.z.string()]).optional().default(false).transform(val => {
+        if (typeof val === 'string')
+            return val === 'true' || val === '1' ? "1" : "0";
+        return val ? "1" : "0";
+    }).describe('Include reversed transactions. Defaults to false.'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 // Function moved from src/appfolio.ts

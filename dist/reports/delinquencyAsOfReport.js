@@ -25,7 +25,7 @@ exports.delinquencyAsOfBaseSchema = zod_1.z.object({
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional().describe((0, validation_1.getIdFieldDescription)('portfolios_ids', 'Portfolio', 'portfolio directory report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional().describe((0, validation_1.getIdFieldDescription)('owners_ids', 'Owner', 'owner directory report')),
     }).optional().describe('Optional. Filter by specific property-related IDs.'),
-    as_of: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe("Required. Date to run the report as of in YYYY-MM-DD format."),
+    occurred_on_to: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe("Required. Date to run the report as of in YYYY-MM-DD format."),
     delinquency_note_range: zod_1.z.string().optional().describe('Optional. Filter by delinquency note range.'),
     tenant_statuses: zod_1.z.array(zod_1.z.string()).default(["0", "4"].slice()).optional().describe('Filter by tenant status. Defaults to ["0", "4"].'),
     tags: zod_1.z.string().optional().describe('Optional. Filter by property tags.'),
@@ -45,8 +45,8 @@ exports.delinquencyAsOfInputSchema = exports.delinquencyAsOfBaseSchema.superRefi
     }
 });
 async function getDelinquencyAsOfReport(args) {
-    if (!args.as_of) {
-        throw new Error('Missing required argument: as_of (format YYYY-MM-DD)');
+    if (!args.occurred_on_to) {
+        throw new Error('Missing required argument: occurred_on_to (format YYYY-MM-DD)');
     }
     const { property_visibility = "active", tenant_statuses = ["0", "4"], amount_owed_in_account = "all", ...rest } = args;
     // Build payload, filtering out empty strings and empty objects

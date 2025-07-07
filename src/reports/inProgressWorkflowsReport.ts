@@ -24,7 +24,7 @@ export type InProgressWorkflowsArgs = {
   };
   process_template?: string;
   workflow_step?: string;
-  assigned_user?: string;
+  assigned_user?: string; // User ID or "All", defaults to "All"
   date_range_from?: string;
   date_range_to?: string;
   columns?: string[];
@@ -43,6 +43,17 @@ export type InProgressWorkflowsResult = {
   }>;
   next_page_url: string;
 };
+
+// Valid columns for in-progress workflows report
+const VALID_IN_PROGRESS_WORKFLOW_COLUMNS = [
+  "attachable_for",
+  "property", 
+  "workflow_name",
+  "current_step",
+  "status",
+  "due_date",
+  "assigned_to"
+] as const;
 
 // Originally from src/index.ts (line 76), with defaults added
 const inProgressWorkflowsArgsSchema = z.object({
@@ -65,7 +76,7 @@ const inProgressWorkflowsArgsSchema = z.object({
   }).optional().describe('Filter results based on properties, groups, or portfolios. All ID fields must be numeric strings, not names.'),
   process_template: z.string().default("All").optional().describe('Filter by specific process template name. Defaults to "All"'),
   workflow_step: z.string().default("All").optional().describe('Filter by specific workflow step name. Defaults to "All"'),
-  assigned_user: z.string().default("All").optional().describe('Filter by assigned user name. Defaults to "All"'),
+  assigned_user: z.string().default("All").optional().describe('Filter by assigned user ID or "All". Defaults to "All". NOTE: Expects numeric user IDs (e.g. "4"), not user names. There is no user directory report available to lookup IDs by name.'),
   date_range_from: z.string().optional().describe('Start date for the due date range (YYYY-MM-DD)'),
   date_range_to: z.string().optional().describe('End date for the due date range (YYYY-MM-DD)'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
@@ -89,7 +100,7 @@ export async function getInProgressWorkflowsReport(args: InProgressWorkflowsArgs
   const { property_visibility = "active", ...rest } = args;
   const payload = { property_visibility, ...rest };
 
-  return makeAppfolioApiCall<InProgressWorkflowsResult>('in_progress_processes.json', payload);
+  return makeAppfolioApiCall<InProgressWorkflowsResult>('in_progress_workflows.json', payload);
 }
 
 // New registration function for MCP

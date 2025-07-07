@@ -124,7 +124,10 @@ const vendorLedgerInputSchema = z.object({
   }).optional(),
   occurred_on_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The start date for the reporting period (YYYY-MM-DD).'),
   occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('Required. The end date for the reporting period (YYYY-MM-DD).'),
-  reverse_transaction: z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include reversed transactions. Defaults to false.'),
+      reverse_transaction: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
+      if (typeof val === 'string') return val === 'true' || val === '1' ? "1" : "0";
+      return val ? "1" : "0";
+    }).describe('Include reversed transactions. Defaults to false.'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
 });
 

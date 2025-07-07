@@ -52,7 +52,7 @@ export const propertyPerformanceArgsSchema = z.object({
   report_format: z.enum(["Current Year Actual", "Last Year Actual", "Prior Year Actual", "Budget Comparison"]).describe('Format for the property performance report. Required.'),
   period_from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
   period_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
-  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
+  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report. Note: Available columns depend on the report_format selected. Avoid generic names like "total_income" - check the API documentation for valid column names for this report.')
 });
 
 // --- Property Performance Report Function ---
@@ -68,9 +68,29 @@ export async function getPropertyPerformanceReport(args: PropertyPerformanceArgs
   }
 
   const { property_visibility = "active", ...rest } = args;
-  const payload = { property_visibility, ...rest };
+  
+  // Filter out empty arrays and undefined/null values to clean up the payload
+  const cleanPayload = {
+    property_visibility,
+    ...Object.fromEntries(
+      Object.entries(rest).filter(([key, value]) => {
+        if (value === null || value === undefined) return false;
+        if (Array.isArray(value) && value.length === 0) return false;
+        if (typeof value === 'object' && value !== null) {
+          const filteredObj = Object.fromEntries(
+            Object.entries(value).filter(([, val]) => {
+              if (Array.isArray(val) && val.length === 0) return false;
+              return val !== null && val !== undefined;
+            })
+          );
+          return Object.keys(filteredObj).length > 0;
+        }
+        return true;
+      })
+    )
+  };
 
-  return makeAppfolioApiCall<PropertyPerformanceResult>('property_performance.json', payload);
+  return makeAppfolioApiCall<PropertyPerformanceResult>('property_performance.json', cleanPayload);
 }
 
 export function registerPropertyPerformanceReportTool(server: McpServer) {

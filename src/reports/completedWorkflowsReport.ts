@@ -24,7 +24,7 @@ export type CompletedWorkflowsArgs = {
   };
   process_template?: string;
   workflow_step?: string;
-  assigned_user?: string;
+  assigned_user?: string; // User ID or "All", defaults to "All"
   date_range_from?: string;
   date_range_to?: string;
   columns?: string[];
@@ -62,7 +62,7 @@ const completedWorkflowsArgsSchema = z.object({
   }).optional().describe('Filter results based on properties, groups, or portfolios. All ID fields must be numeric strings, not names.'),
   process_template: z.string().default("All").optional().describe('Filter by specific process template name. Defaults to "All"'),
   workflow_step: z.string().default("All").optional().describe('Filter by specific workflow step name. Defaults to "All"'),
-  assigned_user: z.string().default("All").optional().describe('Filter by assigned user name. Defaults to "All"'),
+  assigned_user: z.string().default("All").optional().describe('Filter by assigned user ID or "All". Defaults to "All". NOTE: Expects numeric user IDs (e.g. "4"), not user names. There is no user directory report available to lookup IDs by name.'),
   date_range_from: z.string().optional().describe('Start date for the completion date range (YYYY-MM-DD)'),
   date_range_to: z.string().optional().describe('End date for the completion date range (YYYY-MM-DD)'),
   columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')

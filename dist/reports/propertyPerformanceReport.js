@@ -18,7 +18,7 @@ exports.propertyPerformanceArgsSchema = zod_1.z.object({
     report_format: zod_1.z.enum(["Current Year Actual", "Last Year Actual", "Prior Year Actual", "Budget Comparison"]).describe('Format for the property performance report. Required.'),
     period_from: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
     period_to: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
-    columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
+    columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report. Note: Available columns depend on the report_format selected. Avoid generic names like "total_income" - check the API documentation for valid column names for this report.')
 });
 // --- Property Performance Report Function ---
 async function getPropertyPerformanceReport(args) {
@@ -31,8 +31,26 @@ async function getPropertyPerformanceReport(args) {
         (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     const { property_visibility = "active", ...rest } = args;
-    const payload = { property_visibility, ...rest };
-    return (0, appfolio_1.makeAppfolioApiCall)('property_performance.json', payload);
+    // Filter out empty arrays and undefined/null values to clean up the payload
+    const cleanPayload = {
+        property_visibility,
+        ...Object.fromEntries(Object.entries(rest).filter(([key, value]) => {
+            if (value === null || value === undefined)
+                return false;
+            if (Array.isArray(value) && value.length === 0)
+                return false;
+            if (typeof value === 'object' && value !== null) {
+                const filteredObj = Object.fromEntries(Object.entries(value).filter(([, val]) => {
+                    if (Array.isArray(val) && val.length === 0)
+                        return false;
+                    return val !== null && val !== undefined;
+                }));
+                return Object.keys(filteredObj).length > 0;
+            }
+            return true;
+        }))
+    };
+    return (0, appfolio_1.makeAppfolioApiCall)('property_performance.json', cleanPayload);
 }
 function registerPropertyPerformanceReportTool(server) {
     server.tool('get_property_performance_report', 'Retrieves the Property Performance report, showing financial performance metrics for properties within a specified date range. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. \'123\'), NOT names. Use respective directory reports first to lookup IDs by name if needed.', exports.propertyPerformanceArgsSchema.shape, async (args) => {

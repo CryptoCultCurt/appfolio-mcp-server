@@ -64,16 +64,16 @@ export const ownerDirectoryColumnEnum = z.enum([
 ]);
 
 export const ownerDirectoryArgsSchema = z.object({
-  property_visibility: z.string().optional().default("active").describe("Filter properties by visibility. Defaults to 'active'."),
+  property_visibility: z.string().optional().transform(val => val === "" ? undefined : val).default("active").describe("Filter properties by visibility. Defaults to 'active'."),
   properties: z.object({
     properties_ids: z.array(z.string()).optional(),
     property_groups_ids: z.array(z.string()).optional(),
     portfolios_ids: z.array(z.string()).optional(),
     owners_ids: z.array(z.string()).optional(),
   }).optional().describe("Filter results based on properties, groups, portfolios, or owners."),
-  tags: z.string().optional().describe("FILTER BY SYSTEM TAGS ONLY: Comma-separated list of actual tags assigned to owners in the system (e.g., 'vip,corporate'). NOT for searching by owner names - use the full report results for name searching."),
-  owner_visibility: z.string().optional().default("active").describe("Filter owners by visibility. Defaults to 'active'."),
-  created_by: z.string().optional().default("All").describe("Filter by who created the owner. Defaults to 'All'."),
+  tags: z.string().optional().transform(val => val === "" ? undefined : val).describe("FILTER BY SYSTEM TAGS ONLY: Comma-separated list of actual tags assigned to owners in the system (e.g., 'vip,corporate'). NOT for searching by owner names - use the full report results for name searching."),
+  owner_visibility: z.string().optional().transform(val => val === "" ? undefined : val).default("active").describe("Filter owners by visibility. Defaults to 'active'."),
+  created_by: z.string().optional().transform(val => val === "" ? undefined : val).default("All").describe("Filter by who created the owner. Defaults to 'All'."),
   columns: z.array(ownerDirectoryColumnEnum).optional().describe("List of columns to include in the report. If omitted, default columns are used."),
 });
 

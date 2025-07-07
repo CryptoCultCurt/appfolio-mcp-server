@@ -26,7 +26,7 @@ exports.cancelledWorkflowsArgsSchema = zod_1.z.object({
     }).optional().describe('Filter results based on properties, groups, or portfolios'),
     process_template: zod_1.z.string().default("All").describe('Filter by specific process template name. Defaults to "All"'),
     workflow_step: zod_1.z.string().default("All").describe('Filter by specific workflow step name. Defaults to "All"'),
-    assigned_user: zod_1.z.string().default("All").describe('Filter by assigned user name. Defaults to "All"'),
+    assigned_user: zod_1.z.string().default("All").describe('Filter by assigned user ID or "All". Defaults to "All". NOTE: Expects numeric user IDs (e.g. "4"), not user names. There is no user directory report available to lookup IDs by name.'),
     date_range_from: zod_1.z.string().optional().describe('Start date for the cancellation date range (YYYY-MM-DD)'),
     date_range_to: zod_1.z.string().optional().describe('End date for the cancellation date range (YYYY-MM-DD)'),
     cancelled_by: zod_1.z.string().default("All").describe('Filter by the user who cancelled the workflow. Defaults to "All"'),

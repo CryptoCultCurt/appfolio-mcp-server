@@ -41,10 +41,16 @@ export type Cashflow12MonthArgs = {
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
     posted_on_from: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('Required. The start month for the reporting period (YYYY-MM).'),
     posted_on_to: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('Required. The end month for the reporting period (YYYY-MM).'),
-    gl_account_map_id: z.string().optional().describe('Optional. Filter by a specific GL Account Map ID.'),
+    gl_account_map_id: z.string().optional().transform(val => val === "" ? undefined : val).describe('Optional. Filter by a specific GL Account Map ID.'),
     level_of_detail: z.enum(["detail_view", "summary_view"]).optional().default("detail_view").describe('Level of detail. Defaults to "detail_view"'),
-    include_zero_balance_gl_accounts: z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include GL accounts with zero balance. Defaults to false.'),
-    exclude_suppressed_fees: z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Exclude suppressed fees. Defaults to false.'),
+    include_zero_balance_gl_accounts: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
+      if (typeof val === 'string') return val === 'true' || val === '1' ? "1" : "0";
+      return val ? "1" : "0";
+    }).describe('Include GL accounts with zero balance. Defaults to false.'),
+    exclude_suppressed_fees: z.union([z.boolean(), z.string()]).optional().default(false).transform(val => {
+      if (typeof val === 'string') return val === 'true' || val === '1' ? "1" : "0";
+      return val ? "1" : "0";
+    }).describe('Exclude suppressed fees. Defaults to false.'),
     columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report')
   });
 

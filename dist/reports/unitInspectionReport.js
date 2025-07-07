@@ -15,7 +15,11 @@ const unitInspectionArgsSchema = zod_1.z.object({
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners. All ID fields must be numeric strings, not names.'),
     unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     last_inspection_on_from: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").optional().describe('Optional. Filter units last inspected on or after this date (YYYY-MM-DD).'),
-    include_blank_inspection_date: zod_1.z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include units with no inspection date. Defaults to false.'),
+    include_blank_inspection_date: zod_1.z.union([zod_1.z.boolean(), zod_1.z.string()]).optional().default(false).transform(val => {
+        if (typeof val === 'string')
+            return val === 'true' || val === '1' ? "1" : "0";
+        return val ? "1" : "0";
+    }).describe('Include units with no inspection date. Defaults to false.'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 // --- Unit Inspection Report Function ---

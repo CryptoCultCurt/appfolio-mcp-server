@@ -18,7 +18,11 @@ const incomeStatement12MonthArgsSchema = zod_1.z.object({
     posted_on_to: zod_1.z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('Required. The end month for the reporting period (YYYY-MM).'),
     gl_account_map_id: zod_1.z.string().optional().describe('Optional. Filter by a specific GL Account Map ID.'),
     level_of_detail: zod_1.z.enum(["detail_view", "summary_view"]).optional().default("detail_view").describe('Level of detail. Defaults to "detail_view"'),
-    include_zero_balance_gl_accounts: zod_1.z.boolean().optional().default(false).transform(val => val ? "1" : "0").describe('Include GL accounts with zero balance. Defaults to false.'),
+    include_zero_balance_gl_accounts: zod_1.z.union([zod_1.z.boolean(), zod_1.z.string()]).optional().default(false).transform(val => {
+        if (typeof val === 'string')
+            return val === 'true' || val === '1' ? "1" : "0";
+        return val ? "1" : "0";
+    }).describe('Include GL accounts with zero balance. Defaults to false.'),
     columns: zod_1.z.array(zod_1.z.string()).optional().describe('Array of specific columns to include in the report')
 });
 // --- 12 Month Income Statement Report Function ---
