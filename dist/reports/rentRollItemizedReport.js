@@ -8,8 +8,8 @@ exports.getRentRollItemizedReport = getRentRollItemizedReport;
 exports.registerRentRollItemizedReportTool = registerRentRollItemizedReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
-const validation_js_1 = require("../validation.js");
+const appfolio_1 = require("../appfolio");
+const validation_1 = require("../validation");
 dotenv_1.default.config();
 // Available columns extracted from the RentRollItemizedResult type
 exports.RENT_ROLL_ITEMIZED_COLUMNS = [
@@ -82,13 +82,13 @@ const validateGlAccountIds = (glAccountIds) => {
 const rentRollItemizedInputSchema = zod_1.z.object({
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report')),
     }).optional(),
     unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active".'),
     tags: zod_1.z.string().optional().describe('Tags filter'),
@@ -113,8 +113,8 @@ const rentRollItemizedInputSchema = zod_1.z.object({
 async function getRentRollItemizedReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     // Validate GL account IDs if provided
     if (args.gl_account_ids && args.gl_account_ids.length > 0) {
@@ -128,7 +128,7 @@ async function getRentRollItemizedReport(args) {
     }
     const { unit_visibility = "active", ...rest } = args;
     const payload = { unit_visibility, ...rest };
-    return (0, appfolio_js_1.makeAppfolioApiCall)('rent_roll_itemized.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('rent_roll_itemized.json', payload);
 }
 // MCP Tool Registration Function
 function registerRentRollItemizedReportTool(server) {

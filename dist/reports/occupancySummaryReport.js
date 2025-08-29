@@ -5,7 +5,7 @@ exports.getOccupancySummaryReport = getOccupancySummaryReport;
 exports.registerOccupancySummaryReportTool = registerOccupancySummaryReportTool;
 const zod_1 = require("zod");
 const appfolio_1 = require("../appfolio");
-const validation_js_1 = require("../validation.js");
+const validation_1 = require("../validation");
 // Available columns extracted from the OccupancySummaryResultItem type
 exports.OCCUPANCY_SUMMARY_COLUMNS = [
     'unit_type',
@@ -26,13 +26,13 @@ exports.OCCUPANCY_SUMMARY_COLUMNS = [
 exports.occupancySummaryArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
     unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().default("active").describe('Filter units by status. Defaults to "active"'),
     as_of_date: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The "as of" date for the report (YYYY-MM-DD). Required.'),
@@ -43,8 +43,8 @@ exports.occupancySummaryArgsSchema = zod_1.z.object({
 async function getOccupancySummaryReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     if (!args.as_of_date) {
         throw new Error('Missing required argument: as_of_date (format YYYY-MM-DD)');

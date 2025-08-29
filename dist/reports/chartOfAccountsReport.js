@@ -8,7 +8,7 @@ exports.getChartOfAccountsReport = getChartOfAccountsReport;
 exports.registerChartOfAccountsReportTool = registerChartOfAccountsReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
+const appfolio_1 = require("../appfolio");
 dotenv_1.default.config();
 // Available columns extracted from the ChartOfAccountsResult type
 exports.CHART_OF_ACCOUNTS_COLUMNS = [
@@ -32,7 +32,7 @@ const chartOfAccountsArgsSchema = zod_1.z.object({
 });
 // Originally from src/appfolio.ts (function starting line 1603)
 async function getChartOfAccountsReport(args) {
-    return (0, appfolio_js_1.makeAppfolioApiCall)('chart_of_accounts.json', args);
+    return (0, appfolio_1.makeAppfolioApiCall)('chart_of_accounts.json', args);
 }
 // New registration function for MCP
 function registerChartOfAccountsReportTool(server) {

@@ -8,8 +8,8 @@ exports.getGuestCardInquiriesReport = getGuestCardInquiriesReport;
 exports.registerGuestCardInquiriesReportTool = registerGuestCardInquiriesReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
-const validation_js_1 = require("../validation.js");
+const appfolio_1 = require("../appfolio");
+const validation_1 = require("../validation");
 dotenv_1.default.config();
 // Available columns extracted from the GuestCardInquiriesResult type
 exports.GUEST_CARD_INQUIRIES_COLUMNS = [
@@ -62,13 +62,13 @@ const guestCardInquiriesInputSchema = zod_1.z.object({
     property_visibility: zod_1.z.enum(["active", "inactive", "all"]).default("active").describe('Filter properties by visibility status. Defaults to "active"'),
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
     guest_card_sources: zod_1.z.array(zod_1.z.string()).default(["all"]).describe('Filter by guest card sources. Defaults to ["all"]'),
     guest_card_statuses: zod_1.z.array(zod_1.z.string()).default(["all"]).describe('Filter by guest card statuses. Defaults to ["all"]'),
@@ -86,15 +86,15 @@ const guestCardInquiriesInputSchema = zod_1.z.object({
 async function getGuestCardInquiriesReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     if (!args.received_on_from || !args.received_on_to) {
         throw new Error('Missing required arguments: received_on_from and received_on_to (format YYYY-MM-DD)');
     }
     const { guest_card_status = "open", property_visibility = "active", filter_date_range_by = "inquiry", ...rest } = args;
     const payload = { guest_card_status, property_visibility, filter_date_range_by, ...rest };
-    return (0, appfolio_js_1.makeAppfolioApiCall)('guest_card_inquiries.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('guest_card_inquiries.json', payload);
 }
 // MCP Tool Registration Function
 function registerGuestCardInquiriesReportTool(server) {

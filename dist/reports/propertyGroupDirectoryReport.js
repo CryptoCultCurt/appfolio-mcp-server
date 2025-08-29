@@ -8,8 +8,8 @@ exports.getPropertyGroupDirectoryReport = getPropertyGroupDirectoryReport;
 exports.registerPropertyGroupDirectoryReportTool = registerPropertyGroupDirectoryReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
-const validation_js_1 = require("../validation.js");
+const appfolio_1 = require("../appfolio");
+const validation_1 = require("../validation");
 dotenv_1.default.config();
 // Available columns extracted from the sample response
 exports.PROPERTY_GROUP_DIRECTORY_COLUMNS = [
@@ -35,13 +35,13 @@ exports.propertyGroupDirectoryArgsSchema = zod_1.z.object({
         .describe('Property visibility filter'),
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
     }).optional().describe('Property filtering options'),
     orphans_only: zod_1.z.enum(['0', '1']).default('0')
         .describe('Filter to show only orphaned properties (1) or all properties (0)'),
@@ -52,8 +52,8 @@ exports.propertyGroupDirectoryArgsSchema = zod_1.z.object({
 async function getPropertyGroupDirectoryReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     const payload = {
         property_visibility: args.property_visibility,
@@ -61,7 +61,7 @@ async function getPropertyGroupDirectoryReport(args) {
         orphans_only: args.orphans_only,
         ...(args.columns && { columns: args.columns })
     };
-    return (0, appfolio_js_1.makeAppfolioApiCall)('property_group_directory.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('property_group_directory.json', payload);
 }
 // MCP tool registration
 function registerPropertyGroupDirectoryReportTool(server) {

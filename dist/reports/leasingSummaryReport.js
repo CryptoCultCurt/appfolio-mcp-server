@@ -8,8 +8,8 @@ exports.getLeasingSummaryReport = getLeasingSummaryReport;
 exports.registerLeasingSummaryReportTool = registerLeasingSummaryReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
-const validation_js_1 = require("../validation.js");
+const appfolio_1 = require("../appfolio");
+const validation_1 = require("../validation");
 dotenv_1.default.config();
 // Available columns extracted from the LeasingSummaryResult type
 exports.LEASING_SUMMARY_COLUMNS = [
@@ -30,13 +30,13 @@ exports.LEASING_SUMMARY_COLUMNS = [
 exports.leasingSummaryArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report')),
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
     unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active"'),
     posted_on_from: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The start date for the reporting period (YYYY-MM-DD). Required.'),
@@ -48,15 +48,15 @@ exports.leasingSummaryArgsSchema = zod_1.z.object({
 async function getLeasingSummaryReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     if (!args.posted_on_from || !args.posted_on_to) {
         throw new Error('Missing required arguments: posted_on_from and posted_on_to (format YYYY-MM-DD)');
     }
     const { unit_visibility = "active", ...rest } = args;
     const payload = { unit_visibility, ...rest };
-    return (0, appfolio_js_1.makeAppfolioApiCall)('leasing_summary.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('leasing_summary.json', payload);
 }
 // --- Register Leasing Summary Report Tool ---
 function registerLeasingSummaryReportTool(server) {

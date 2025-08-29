@@ -316,7 +316,7 @@ async function startHttpServer() {
   const transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport> = {};
 
   // Streamable HTTP endpoint (supports GET/POST/DELETE)
-  app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {
+  const mcpHandler = async (req: express.Request, res: express.Response) => {
     try {
       const existingSessionIdHeader = req.headers["mcp-session-id"] as string | undefined;
       let transport: StreamableHTTPServerTransport | undefined;
@@ -373,6 +373,13 @@ async function startHttpServer() {
         });
       }
     }
+  };
+  app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
+  app.all("/mcp/", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
+
+  // Friendly root route to verify service is up
+  app.get("/", (_req, res) => {
+    res.status(200).send("AppFolio MCP server is running. Use POST /mcp to initialize a session.");
   });
 
   // SSE fallback endpoints (deprecated transport)

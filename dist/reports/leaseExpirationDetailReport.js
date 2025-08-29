@@ -8,8 +8,8 @@ exports.getLeaseExpirationDetailReport = getLeaseExpirationDetailReport;
 exports.registerLeaseExpirationDetailReportTool = registerLeaseExpirationDetailReportTool;
 const zod_1 = require("zod");
 const dotenv_1 = __importDefault(require("dotenv"));
-const appfolio_js_1 = require("../appfolio.js");
-const validation_js_1 = require("../validation.js");
+const appfolio_1 = require("../appfolio");
+const validation_1 = require("../validation");
 dotenv_1.default.config();
 // Available columns extracted from the LeaseExpirationDetailResult type
 exports.LEASE_EXPIRATION_DETAIL_COLUMNS = [
@@ -60,13 +60,13 @@ exports.leaseExpirationDetailArgsSchema = zod_1.z.object({
     to_date: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe('The end date for the reporting period (YYYY-MM-DD). Required.'),
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property', 'Property Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property', 'Property Directory Report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('property group', 'Property Group Directory Report')),
         portfolios_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
+            .describe((0, validation_1.getIdFieldDescription)('portfolio', 'Portfolio Directory Report')),
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
-            .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
+            .describe((0, validation_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
     unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active"'),
     tags: zod_1.z.string().optional().describe('Filter by unit tags (comma-separated string)'),
@@ -80,15 +80,15 @@ exports.leaseExpirationDetailArgsSchema = zod_1.z.object({
 async function getLeaseExpirationDetailReport(args) {
     // Validate properties IDs if provided
     if (args.properties) {
-        const validationErrors = (0, validation_js_1.validatePropertiesIds)(args.properties);
-        (0, validation_js_1.throwOnValidationErrors)(validationErrors);
+        const validationErrors = (0, validation_1.validatePropertiesIds)(args.properties);
+        (0, validation_1.throwOnValidationErrors)(validationErrors);
     }
     if (!args.from_date || !args.to_date) {
         throw new Error('Missing required arguments: from_date and to_date (format YYYY-MM-DD)');
     }
     const { unit_visibility = "active", ...rest } = args;
     const payload = { unit_visibility, ...rest };
-    return (0, appfolio_js_1.makeAppfolioApiCall)('lease_expiration_detail.json', payload);
+    return (0, appfolio_1.makeAppfolioApiCall)('lease_expiration_detail.json', payload);
 }
 // Registration function for the tool
 function registerLeaseExpirationDetailReportTool(server) {

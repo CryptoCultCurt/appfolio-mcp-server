@@ -8,6 +8,7 @@ const dotenv_1 = __importDefault(require("dotenv"));
 const express_1 = __importDefault(require("express"));
 const cors_1 = __importDefault(require("cors"));
 const node_crypto_1 = require("node:crypto");
+const node_net_1 = __importDefault(require("node:net"));
 const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const streamableHttp_js_1 = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
@@ -222,6 +223,22 @@ function createMcpServer() {
     (0, workOrderReport_1.registerWorkOrderReportTool)(server);
     return server;
 }
+async function findAvailablePort(startPort, maxAttempts = 20) {
+    for (let port = startPort; port < startPort + maxAttempts; port++) {
+        const isFree = await new Promise((resolve) => {
+            const tester = node_net_1.default
+                .createServer()
+                .once("error", () => resolve(false))
+                .once("listening", () => {
+                tester.close(() => resolve(true));
+            })
+                .listen(port, "0.0.0.0");
+        });
+        if (isFree)
+            return port;
+    }
+    throw new Error(`No available port found starting at ${startPort}`);
+}
 async function startStdio() {
     const server = createMcpServer();
     const transport = new stdio_js_1.StdioServerTransport();
@@ -253,9 +270,14 @@ async function startHttpServer() {
     const oauthIssuer = process.env.OAUTH_ISSUER; // Upstream issuer
     const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || "").split(/\s+/).filter(Boolean);
     const serviceDocumentationUrl = process.env.OAUTH_SERVICE_DOC_URL;
-    const port = Number(process.env.HTTP_PORT || process.env.PORT || 3000);
-    const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${port}/mcp`);
-    // Publish OAuth metadata for this MCP resource
+    const requestedPort = Number(process.env.HTTP_PORT || process.env.PORT || 3000);
+    const selectedPort = await findAvailablePort(requestedPort, 50);
+    if (selectedPort !== requestedPort) {
+        // eslint-disable-next-line no-console
+        console.warn(`Port ${requestedPort} is in use; using port ${selectedPort} instead.`);
+    }
+    const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${selectedPort}/mcp`);
+    // Publish OAuth metadata for this MCP resource (computed after final port is selected)
     if (proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) {
         // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
         const oauthMetadata = {
@@ -369,9 +391,9 @@ async function startHttpServer() {
         }
         await transport.handlePostMessage(req, res, req.body);
     });
-    app.listen(port, () => {
+    app.listen(selectedPort, () => {
         // eslint-disable-next-line no-console
-        console.log(`MCP HTTP server listening on port ${port}`);
+        console.log(`MCP HTTP server listening on port ${selectedPort}`);
     });
 }
 // Start in the requested mode
