@@ -51,7 +51,7 @@ exports.RENEWAL_SUMMARY_COLUMNS = [
     'move_out'
 ];
 // Zod schema for Renewal Summary Report arguments
-const renewalStatusSchema = zod_1.z.enum(["all", "awaiting_response", "countersigned", "pending", "skipped", "notice_to_vacate"]);
+const renewalStatusSchema = zod_1.z.enum(["all", "Renewed", "Did Not Renew", "Month To Month", "Pending", "Cancelled by User"]);
 const renewalSummaryArgsSchema = zod_1.z.object({
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional()
@@ -63,7 +63,7 @@ const renewalSummaryArgsSchema = zod_1.z.object({
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
             .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report'))
     }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
-    unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).optional().describe('Filter units by status. Defaults to "active"'),
+    unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active"'),
     start_on_from: zod_1.z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The start month for the reporting period based on lease start date (YYYY-MM). Required.'),
     start_on_to: zod_1.z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The end month for the reporting period based on lease start date (YYYY-MM). Required.'),
     statuses: zod_1.z.array(renewalStatusSchema).optional().default(["all"]).describe('Filter by renewal status. Defaults to ["all"]'),
@@ -92,13 +92,16 @@ async function getRenewalSummaryReport(args) {
 }
 // --- Renewal Summary Report Tool ---
 function registerRenewalSummaryReportTool(server) {
-    server.tool("get_renewal_summary_report", "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.", renewalSummaryArgsSchema.shape, async (args, _extra) => {
+    server.tool("get_renewal_summary_report", "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: All string parameters should be properly quoted JSON strings (e.g. \"active\", not active).", renewalSummaryArgsSchema.shape, async (args, _extra) => {
         try {
+            // Log the raw arguments to help debug parsing issues
+            console.log('Renewal Summary Report - Raw args received:', JSON.stringify(args, null, 2));
             // Validate arguments against schema
             const parseResult = renewalSummaryArgsSchema.safeParse(args);
             if (!parseResult.success) {
                 const errorMessages = parseResult.error.errors.map(err => `${err.path.join('.')}: ${err.message}`).join('; ');
-                throw new Error(`Invalid arguments: ${errorMessages}`);
+                console.error('Renewal Summary Report - Schema validation failed:', errorMessages);
+                throw new Error(`Invalid arguments: ${errorMessages}. Note: All string values should be properly quoted in JSON format (e.g. "active", not active).`);
             }
             const result = await getRenewalSummaryReport(parseResult.data);
             return {

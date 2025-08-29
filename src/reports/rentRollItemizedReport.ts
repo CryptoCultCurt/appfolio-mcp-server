@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import dotenv from 'dotenv';
-import { makeAppfolioApiCall } from '../appfolio.js';
-import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation.js';
+import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 dotenv.config();
 
@@ -158,9 +158,19 @@ const rentRollItemizedInputSchema = z.object({
     owners_ids: z.array(z.string()).optional()
       .describe(getIdFieldDescription('owner', 'Owner Directory Report')),
   }).optional(),
-  unit_visibility: z.string().default("active").describe('Unit visibility filter'),
+  unit_visibility: z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active".'),
   tags: z.string().optional().describe('Tags filter'),
-  gl_account_ids: z.array(z.string()).optional()
+  gl_account_ids: z.union([
+    z.array(z.string()),
+    z.string().transform((str) => {
+      try {
+        const parsed = JSON.parse(str);
+        return Array.isArray(parsed) ? parsed : [str];
+      } catch {
+        return [str];
+      }
+    })
+  ]).optional()
     .describe('Array of GL account IDs (internal database IDs, NOT GL account numbers). These are numeric strings like "123", "456". Do NOT use GL account numbers like "4630", "4635". Use the Chart of Accounts Report to lookup gl_account_ids by GL account number or name.'),
   as_of_date: z.string().describe('Report date in YYYY-MM-DD format'),
   columns: z.array(z.enum(RENT_ROLL_ITEMIZED_COLUMNS)).optional()
@@ -202,6 +212,13 @@ export function registerRentRollItemizedReportTool(server: McpServer) {
     async (args, _extra: unknown) => {
       try {
         console.log('Rent Roll Itemized Report - Received args:', JSON.stringify(args, null, 2));
+        
+        // Debug GL account IDs specifically
+        if ((args as any).gl_account_ids) {
+          console.log('GL Account IDs type:', typeof (args as any).gl_account_ids);
+          console.log('GL Account IDs value:', (args as any).gl_account_ids);
+          console.log('GL Account IDs is array:', Array.isArray((args as any).gl_account_ids));
+        }
         
         // Validate arguments against schema
         const parseResult = rentRollItemizedInputSchema.safeParse(args);

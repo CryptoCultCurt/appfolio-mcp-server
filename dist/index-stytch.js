@@ -1,5 +1,38 @@
 #!/usr/bin/env node
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -12,11 +45,9 @@ const mcp_js_1 = require("@modelcontextprotocol/sdk/server/mcp.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const streamableHttp_js_1 = require("@modelcontextprotocol/sdk/server/streamableHttp.js");
 const sse_js_1 = require("@modelcontextprotocol/sdk/server/sse.js");
-const bearerAuth_js_1 = require("@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js");
-const router_js_1 = require("@modelcontextprotocol/sdk/server/auth/router.js");
 const types_js_1 = require("@modelcontextprotocol/sdk/types.js");
-const jose_1 = require("jose");
-const errors_js_1 = require("@modelcontextprotocol/sdk/server/auth/errors.js");
+const stytch = __importStar(require("stytch"));
+// Import all your report tools
 const cashflowReport_1 = require("./reports/cashflowReport");
 const accountTotalsReport_1 = require("./reports/accountTotalsReport");
 const agedPayablesSummaryReport_1 = require("./reports/agedPayablesSummaryReport");
@@ -52,6 +83,7 @@ const residentFinancialActivityReport_1 = require("./reports/residentFinancialAc
 const screeningAssessmentReport_1 = require("./reports/screeningAssessmentReport");
 const securityDepositFundsDetailReport_1 = require("./reports/securityDepositFundsDetailReport");
 const tenantDirectoryReport_1 = require("./reports/tenantDirectoryReport");
+const tenantLedgerReport_1 = require("./reports/tenantLedgerReport");
 const trialBalanceByPropertyReport_1 = require("./reports/trialBalanceByPropertyReport");
 const propertyDirectoryReport_1 = require("./reports/propertyDirectoryReport");
 const propertyGroupDirectoryReport_1 = require("./reports/propertyGroupDirectoryReport");
@@ -63,116 +95,31 @@ const unitVacancyDetail_1 = require("./reports/unitVacancyDetail");
 const vendorDirectoryReport_1 = require("./reports/vendorDirectoryReport");
 const workOrderReport_1 = require("./reports/workOrderReport");
 const workOrderLaborSummaryReport_1 = require("./reports/workOrderLaborSummaryReport");
-const tenantLedgerReport_1 = require("./reports/tenantLedgerReport");
 dotenv_1.default.config();
-function createJwksVerifier(options) {
-    const { jwksUrl, issuer, audience, inlineJwksJson } = options;
-    const jwks = (0, jose_1.createRemoteJWKSet)(new URL(jwksUrl), { timeoutDuration: 10000 });
-    let localSetPromise = null;
-    async function getLocalJwkSet() {
-        if (localSetPromise)
-            return localSetPromise;
-        // If inline JWKS JSON provided, use that and avoid network entirely
-        if (inlineJwksJson) {
-            try {
-                const parsed = JSON.parse(inlineJwksJson);
-                localSetPromise = Promise.resolve((0, jose_1.createLocalJWKSet)(parsed));
-                // eslint-disable-next-line no-console
-                console.log("Using inline JWKS from OAUTH_JWKS_JSON env");
-                return localSetPromise;
-            }
-            catch (e) {
-                // eslint-disable-next-line no-console
-                console.error("Invalid OAUTH_JWKS_JSON:", e?.message || e);
-            }
-        }
-        localSetPromise = (async () => {
-            try {
-                const res = await fetch(jwksUrl, { headers: { accept: "application/json" } });
-                if (!res.ok)
-                    throw new Error(`JWKS HTTP ${res.status}`);
-                const jwk = await res.json();
-                return (0, jose_1.createLocalJWKSet)(jwk);
-            }
-            catch (e) {
-                // eslint-disable-next-line no-console
-                console.error("Prefetch JWKS failed:", e?.message || e);
-                // Fallback to remote set by throwing to caller
-                throw e;
-            }
-        })();
-        return localSetPromise;
-    }
-    return {
-        async verifyAccessToken(token) {
-            const segments = token.split(".").length;
-            try {
-                const headerSegment = token.split(".")[0];
-                const headerJson = JSON.parse(Buffer.from(headerSegment, "base64url").toString("utf8"));
-                // eslint-disable-next-line no-console
-                console.log(`Access token header: alg=${headerJson.alg || "?"}, kid=${headerJson.kid || "?"}, segments=${segments}`);
-            }
-            catch { }
-            if (segments !== 3) {
-                // eslint-disable-next-line no-console
-                console.error(`Access token has ${segments} segments; expected 3 (signed JWT/JWS).`);
-                if (segments === 5) {
-                    throw new errors_js_1.InvalidTokenError("Encrypted (JWE) token provided. Configure Auth0 API to issue signed RS256 JWT access tokens.");
-                }
-                throw new errors_js_1.InvalidTokenError("Invalid token format. Expected compact JWS (three segments).");
-            }
-            let payload;
-            try {
-                // First try with locally prefetched JWKS (if available)
-                try {
-                    const local = await getLocalJwkSet();
-                    ({ payload } = await (0, jose_1.jwtVerify)(token, local, { issuer, audience }));
-                }
-                catch (e) {
-                    // Fallback to remote JWKS fetch if local failed (or not yet available)
-                    ({ payload } = await (0, jose_1.jwtVerify)(token, jwks, {
-                        issuer,
-                        audience,
-                    }));
-                }
-            }
-            catch (err) {
-                // eslint-disable-next-line no-console
-                console.error("JWT verification failed:", err?.message || err);
-                throw new errors_js_1.InvalidTokenError("Invalid token");
-            }
-            const scopes = typeof payload.scope === "string" ? payload.scope.split(" ") : [];
-            const clientId = (payload.client_id || payload.azp || payload.sub || "unknown");
-            let resourceUrl;
-            const resourceClaim = payload.resource;
-            if (typeof resourceClaim === "string") {
-                try {
-                    resourceUrl = new URL(resourceClaim);
-                }
-                catch { }
-            }
-            else if (Array.isArray(resourceClaim) && resourceClaim.length > 0 && typeof resourceClaim[0] === "string") {
-                try {
-                    resourceUrl = new URL(resourceClaim[0]);
-                }
-                catch { }
-            }
-            return {
-                token,
-                clientId,
-                scopes,
-                expiresAt: typeof payload.exp === "number" ? payload.exp : undefined,
-                resource: resourceUrl,
-                extra: payload,
-            };
-        },
-    };
-}
-function createMcpServer() {
+// Initialize Stytch client
+const stytchClient = new stytch.Client({
+    project_id: process.env.STYTCH_PROJECT_ID,
+    secret: process.env.STYTCH_SECRET,
+});
+// Store user info per session
+const sessionUsers = {};
+function createMcpServer(userInfo) {
     const server = new mcp_js_1.McpServer({
         name: "appfolio-mcp",
         version: "1.0.1",
     });
+    // Add a whoami tool to show current user info
+    if (userInfo) {
+        server.tool("whoami", "Show current authenticated user information", async () => ({
+            content: [
+                {
+                    type: "text",
+                    text: `Authenticated User:\n${JSON.stringify(userInfo, null, 2)}`,
+                },
+            ],
+        }));
+    }
+    // Register all your existing AppFolio tools
     (0, cashflowReport_1.registerCashflowReportTool)(server);
     (0, accountTotalsReport_1.registerAccountTotalsReportTool)(server);
     (0, agedPayablesSummaryReport_1.registerAgedPayablesSummaryReportTool)(server);
@@ -230,68 +177,81 @@ async function startStdio() {
 async function startHttpServer() {
     const app = (0, express_1.default)();
     app.use(express_1.default.json());
-    // CORS and security headers
     app.use((0, cors_1.default)({
         origin: process.env.CORS_ORIGIN || "*",
         exposedHeaders: ["Mcp-Session-Id"],
     }));
-    // Optional OAuth 2.1 Bearer token validation
-    const jwksUrl = process.env.OAUTH_JWKS_URL;
-    const issuer = process.env.OAUTH_ISSUER;
-    const audience = process.env.OAUTH_AUDIENCE;
-    const inlineJwksJson = process.env.OAUTH_JWKS_JSON;
-    const resourceMetadataUrl = process.env.OAUTH_RESOURCE_METADATA_URL; // Optional: used in WWW-Authenticate
-    const useAuth = Boolean(jwksUrl);
-    const authMiddleware = useAuth
-        ? (0, bearerAuth_js_1.requireBearerAuth)({ verifier: createJwksVerifier({ jwksUrl: jwksUrl, issuer, audience, inlineJwksJson }), resourceMetadataUrl })
-        : undefined;
-    // Optional OAuth 2.1 Authorization Server proxy routes (so clients like Inspector can complete OAuth flows)
-    const proxyAuthorizationUrl = process.env.OAUTH_PROXY_AUTHORIZATION_URL;
-    const proxyTokenUrl = process.env.OAUTH_PROXY_TOKEN_URL;
-    const proxyRevocationUrl = process.env.OAUTH_PROXY_REVOCATION_URL;
-    const proxyRegistrationUrl = process.env.OAUTH_PROXY_REGISTRATION_URL;
-    const oauthIssuer = process.env.OAUTH_ISSUER; // Upstream issuer
-    const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || "").split(/\s+/).filter(Boolean);
-    const serviceDocumentationUrl = process.env.OAUTH_SERVICE_DOC_URL;
     const port = Number(process.env.HTTP_PORT || process.env.PORT || 3000);
-    const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${port}/mcp`);
-    // Publish OAuth metadata for this MCP resource
-    if (proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) {
-        // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
-        const oauthMetadata = {
-            issuer: oauthIssuer,
-            authorization_endpoint: proxyAuthorizationUrl,
-            token_endpoint: proxyTokenUrl,
-            revocation_endpoint: proxyRevocationUrl,
-            registration_endpoint: proxyRegistrationUrl, // Critical for MCP Inspector!
-            response_types_supported: ["code"], // MCP uses authorization code flow
-            scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["read:user", "write:user"],
-            service_documentation: serviceDocumentationUrl,
-            jwks_uri: jwksUrl,
-            grant_types_supported: ["authorization_code", "refresh_token"],
-            subject_types_supported: ["public"],
-            id_token_signing_alg_values_supported: ["RS256"],
-            token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic", "none"],
-            code_challenge_methods_supported: ["S256", "plain"],
-            // Dynamic Client Registration metadata
-            client_registration_types_supported: ["automatic"],
-        };
-        app.use((0, router_js_1.mcpAuthMetadataRouter)({
-            oauthMetadata,
-            resourceServerUrl,
-            serviceDocumentationUrl: serviceDocumentationUrl ? new URL(serviceDocumentationUrl) : undefined,
-            scopesSupported: oauthScopesSupported.length ? oauthScopesSupported : undefined,
-        }));
-    }
+    const useAuth = Boolean(process.env.STYTCH_PROJECT_ID && process.env.STYTCH_SECRET);
     // Session transport store
     const transports = {};
-    // Streamable HTTP endpoint (supports GET/POST/DELETE)
-    app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {
+    // Stytch authentication middleware
+    const stytchAuthMiddleware = async (req, res, next) => {
+        if (!useAuth) {
+            return next();
+        }
+        const authHeader = req.headers.authorization;
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            res.status(401).json({
+                error: "unauthorized",
+                error_description: "Missing or invalid authorization header",
+            });
+            return;
+        }
+        const token = authHeader.substring(7);
+        try {
+            // Use Stytch's session authentication
+            // The token should be a Stytch session token
+            const authResponse = await stytchClient.sessions.authenticate({
+                session_token: token,
+            });
+            // Store user info for this session if we have a session ID
+            const sessionId = req.headers["mcp-session-id"];
+            if (sessionId) {
+                sessionUsers[sessionId] = authResponse.user;
+            }
+            // Attach user info to request for downstream use
+            req.stytchUser = authResponse.user;
+            req.stytchSession = authResponse.session;
+            next();
+        }
+        catch (error) {
+            console.error("Stytch token validation failed:", error);
+            res.status(401).json({
+                error: "invalid_token",
+                error_description: "Token validation failed",
+            });
+        }
+    };
+    // OAuth metadata endpoints for MCP Inspector discovery
+    app.get("/.well-known/oauth-protected-resource", (req, res) => {
+        res.json({
+            resource: `http://localhost:${port}/mcp`,
+            authorization_servers: [`https://stytch.com/${process.env.STYTCH_PROJECT_ID}`],
+            scopes_supported: ["read:user", "write:user"],
+        });
+    });
+    app.get("/.well-known/oauth-authorization-server", (req, res) => {
+        const environment = process.env.STYTCH_ENVIRONMENT || "test";
+        res.json({
+            issuer: `https://stytch.com/${process.env.STYTCH_PROJECT_ID}`,
+            authorization_endpoint: `https://${environment}.stytch.com/v1/public/oauth/authorize`,
+            token_endpoint: `https://${environment}.stytch.com/v1/public/oauth/token`,
+            revocation_endpoint: `https://${environment}.stytch.com/v1/public/oauth/revoke`,
+            registration_endpoint: `https://${environment}.stytch.com/v1/public/oauth/register`,
+            response_types_supported: ["code"],
+            scopes_supported: ["read:user", "write:user"],
+            jwks_uri: `https://${environment}.stytch.com/v1/sessions/jwks/${process.env.STYTCH_PROJECT_ID}`,
+            grant_types_supported: ["authorization_code", "refresh_token"],
+            token_endpoint_auth_methods_supported: ["client_secret_post", "client_secret_basic", "none"],
+            code_challenge_methods_supported: ["S256", "plain"],
+        });
+    });
+    // Streamable HTTP endpoint
+    app.all("/mcp", ...(useAuth ? [stytchAuthMiddleware] : []), async (req, res) => {
         try {
             const existingSessionIdHeader = req.headers["mcp-session-id"];
             let transport;
-            console.log("existingSessionIdHeader", existingSessionIdHeader);
-            console.log("transports", transports);
             if (existingSessionIdHeader && transports[existingSessionIdHeader]) {
                 const existing = transports[existingSessionIdHeader];
                 if (existing instanceof streamableHttp_js_1.StreamableHTTPServerTransport) {
@@ -307,21 +267,19 @@ async function startHttpServer() {
                 }
             }
             else if (!existingSessionIdHeader && req.method === "POST" && (0, types_js_1.isInitializeRequest)(req.body)) {
+                const sessionId = (0, node_crypto_1.randomUUID)();
                 transport = new streamableHttp_js_1.StreamableHTTPServerTransport({
-                    sessionIdGenerator: () => (0, node_crypto_1.randomUUID)(),
+                    sessionIdGenerator: () => sessionId,
                     enableJsonResponse: true,
-                    onsessioninitialized: (sid) => {
-                        transports[sid] = transport;
-                    },
                 });
+                transports[sessionId] = transport;
                 transport.onclose = () => {
-                    const sid = transport.sessionId;
-                    if (sid && transports[sid])
-                        delete transports[sid];
+                    delete transports[sessionId];
+                    delete sessionUsers[sessionId];
                 };
-                const server = createMcpServer();
-                console.log("server", server);
-                console.log("transport", transport);
+                // Create server with user info if authenticated
+                const userInfo = req.stytchUser;
+                const server = createMcpServer(userInfo);
                 await server.connect(transport);
             }
             else {
@@ -335,7 +293,6 @@ async function startHttpServer() {
             await transport.handleRequest(req, res, req.body);
         }
         catch (error) {
-            // eslint-disable-next-line no-console
             console.error("Error handling MCP request:", error);
             if (!res.headersSent) {
                 res.status(500).json({
@@ -346,17 +303,19 @@ async function startHttpServer() {
             }
         }
     });
-    // SSE fallback endpoints (deprecated transport)
-    app.get("/sse", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {
+    // SSE fallback endpoint
+    app.get("/sse", ...(useAuth ? [stytchAuthMiddleware] : []), async (req, res) => {
         const transport = new sse_js_1.SSEServerTransport("/messages", res);
         transports[transport.sessionId] = transport;
         res.on("close", () => {
             delete transports[transport.sessionId];
+            delete sessionUsers[transport.sessionId];
         });
-        const server = createMcpServer();
+        const userInfo = req.stytchUser;
+        const server = createMcpServer(userInfo);
         await server.connect(transport);
     });
-    app.post("/messages", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {
+    app.post("/messages", ...(useAuth ? [stytchAuthMiddleware] : []), async (req, res) => {
         const sessionId = req.query.sessionId || "";
         const transport = transports[sessionId];
         if (!transport || !(transport instanceof sse_js_1.SSEServerTransport)) {
@@ -370,8 +329,11 @@ async function startHttpServer() {
         await transport.handlePostMessage(req, res, req.body);
     });
     app.listen(port, () => {
-        // eslint-disable-next-line no-console
         console.log(`MCP HTTP server listening on port ${port}`);
+        console.log(`Stytch authentication: ${useAuth ? "ENABLED" : "DISABLED"}`);
+        if (useAuth) {
+            console.log(`Stytch Project ID: ${process.env.STYTCH_PROJECT_ID}`);
+        }
     });
 }
 // Start in the requested mode

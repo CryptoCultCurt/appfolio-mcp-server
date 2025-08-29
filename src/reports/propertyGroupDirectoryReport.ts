@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import dotenv from 'dotenv';
-import { makeAppfolioApiCall } from '../appfolio.js';
-import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation.js';
+import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 dotenv.config();
 

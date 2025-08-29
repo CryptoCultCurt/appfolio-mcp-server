@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import dotenv from 'dotenv';
-import { makeAppfolioApiCall } from '../appfolio.js';
+import { makeAppfolioApiCall } from '../appfolio';
 
 dotenv.config();
 

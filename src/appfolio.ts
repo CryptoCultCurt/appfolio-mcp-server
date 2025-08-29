@@ -67,14 +67,60 @@ export async function makeAppfolioApiCall<T = any>(endpoint: string, payload: an
   }
 
   const url = `https://${VHOST}.appfolio.com/api/v2/reports/${endpoint}`;
-  const response = await appfolioLimiter.schedule(() => 
-    axios.post(url, payload, {
-      auth: { username: USERNAME, password: PASSWORD },
-      headers: { 'Content-Type': 'application/json' },
-    })
-  );
+  
+  try {
+    const response = await appfolioLimiter.schedule(() => 
+      axios.post(url, payload, {
+        auth: { username: USERNAME, password: PASSWORD },
+        headers: { 'Content-Type': 'application/json' },
+      })
+    );
 
-  return response.data;
+    return response.data;
+  } catch (error) {
+    // Transform axios errors into more meaningful error messages
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const statusText = error.response?.statusText;
+      const responseData = error.response?.data;
+      
+      // Try to extract meaningful error message from response
+      let errorMessage = 'Unknown API error';
+      
+      if (responseData) {
+        if (typeof responseData === 'string') {
+          errorMessage = responseData;
+        } else if (responseData.error) {
+          errorMessage = responseData.error;
+        } else if (responseData.message) {
+          errorMessage = responseData.message;
+        } else if (responseData.errors && Array.isArray(responseData.errors)) {
+          errorMessage = responseData.errors.join(', ');
+        }
+      }
+      
+      if (status === 400) {
+        throw new Error(`Bad Request: ${errorMessage}. Please check your parameters and try again.`);
+      } else if (status === 401) {
+        throw new Error(`Authentication failed: ${errorMessage}. Please check your AppFolio credentials.`);
+      } else if (status === 403) {
+        throw new Error(`Access denied: ${errorMessage}. You may not have permission to access this resource.`);
+      } else if (status === 404) {
+        throw new Error(`Resource not found: ${errorMessage}. The requested endpoint may not exist.`);
+      } else if (status === 422) {
+        throw new Error(`Validation error: ${errorMessage}. Please check your parameters and try again.`);
+      } else if (status === 500) {
+        throw new Error(`Internal server error: ${errorMessage}. This may be due to invalid parameters or a temporary server issue. Please verify your parameters and try again.`);
+      } else if (status) {
+        throw new Error(`HTTP ${status} ${statusText}: ${errorMessage}`);
+      } else {
+        throw new Error(`Network error: ${error.message}`);
+      }
+    }
+    
+    // Re-throw non-axios errors as-is
+    throw error;
+  }
 }
 
 export {

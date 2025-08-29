@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
-import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation.js';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 // Available columns extracted from the OccupancySummaryResultItem type
 export const OCCUPANCY_SUMMARY_COLUMNS = [

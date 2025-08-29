@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.delinquencyAsOfInputSchema = exports.delinquencyAsOfBaseSchema = exports.delinquencyColumnsList = void 0;
+exports.delinquencyAsOfInputSchema = exports.delinquencyAsOfBaseSchema = exports.TENANT_STATUS_MAP = exports.delinquencyColumnsList = void 0;
 exports.getDelinquencyAsOfReport = getDelinquencyAsOfReport;
 exports.registerDelinquencyAsOfReportTool = registerDelinquencyAsOfReportTool;
 const zod_1 = require("zod");
@@ -16,9 +16,16 @@ exports.delinquencyColumnsList = [
     'certified_funds_only', 'in_collections', 'collections_agency', 'unit_id',
     'occupancy_id', 'property_group_id'
 ];
+exports.TENANT_STATUS_MAP = {
+    "0": "Current",
+    "1": "Past",
+    "2": "Future",
+    "3": "Evict",
+    "4": "Notice"
+};
 // Base schema for shape compatibility
 exports.delinquencyAsOfBaseSchema = zod_1.z.object({
-    property_visibility: zod_1.z.string().default("active").optional().describe('Filter properties by status. Defaults to "active".'),
+    property_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter properties by status. Defaults to "active".'),
     properties: zod_1.z.object({
         properties_ids: zod_1.z.array(zod_1.z.string()).optional().describe((0, validation_1.getIdFieldDescription)('properties_ids', 'Property', 'property directory report')),
         property_groups_ids: zod_1.z.array(zod_1.z.string()).optional().describe((0, validation_1.getIdFieldDescription)('property_groups_ids', 'Property Group', 'property group directory report')),
@@ -27,7 +34,7 @@ exports.delinquencyAsOfBaseSchema = zod_1.z.object({
     }).optional().describe('Optional. Filter by specific property-related IDs.'),
     occurred_on_to: zod_1.z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe("Required. Date to run the report as of in YYYY-MM-DD format."),
     delinquency_note_range: zod_1.z.string().optional().describe('Optional. Filter by delinquency note range.'),
-    tenant_statuses: zod_1.z.array(zod_1.z.string()).default(["0", "4"].slice()).optional().describe('Filter by tenant status. Defaults to ["0", "4"].'),
+    tenant_statuses: zod_1.z.array(zod_1.z.enum(["0", "1", "2", "3", "4"])).default(["0", "4"]).optional().describe('Filter by tenant status. Valid values: "0"=Current, "1"=Past, "2"=Future, "3"=Evict, "4"=Notice. Defaults to ["0", "4"] (Current and Notice tenants).'),
     tags: zod_1.z.string().optional().describe('Optional. Filter by property tags.'),
     amount_owed_in_account: zod_1.z.string().default("all").optional().describe('Filter by amount owed in account. Defaults to "all".'),
     balance_operator: zod_1.z.object({
@@ -73,7 +80,7 @@ async function getDelinquencyAsOfReport(args) {
     return (0, appfolio_1.makeAppfolioApiCall)('delinquency_as_of.json', payload);
 }
 function registerDelinquencyAsOfReportTool(server) {
-    server.tool("get_delinquency_as_of_report", "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.", exports.delinquencyAsOfBaseSchema.shape, async (args, _extra) => {
+    server.tool("get_delinquency_as_of_report", "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: tenant_statuses uses numeric codes: 0=Current, 1=Past, 2=Future, 3=Evict, 4=Notice.", exports.delinquencyAsOfBaseSchema.shape, async (args, _extra) => {
         try {
             // Validate arguments against schema
             const parseResult = exports.delinquencyAsOfInputSchema.safeParse(args);

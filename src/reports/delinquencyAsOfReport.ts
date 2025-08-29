@@ -53,6 +53,17 @@ export const delinquencyColumnsList: DelinquencyColumn[] = [
   'occupancy_id', 'property_group_id'
 ];
 
+// Tenant status mapping for clarity
+export type TenantStatus = "0" | "1" | "2" | "3" | "4";
+
+export const TENANT_STATUS_MAP = {
+  "0": "Current",
+  "1": "Past", 
+  "2": "Future",
+  "3": "Evict",
+  "4": "Notice"
+} as const;
+
 export type DelinquencyAsOfArgs = {
   property_visibility?: string; 
   properties?: {
@@ -63,7 +74,7 @@ export type DelinquencyAsOfArgs = {
   };
   occurred_on_to: string; 
   delinquency_note_range?: string;
-  tenant_statuses?: string[]; 
+  tenant_statuses?: TenantStatus[]; 
   tags?: string;
   amount_owed_in_account?: string; 
   balance_operator?: {
@@ -118,7 +129,7 @@ export type DelinquencyAsOfResult = {
 
 // Base schema for shape compatibility
 export const delinquencyAsOfBaseSchema = z.object({
-  property_visibility: z.string().default("active").optional().describe('Filter properties by status. Defaults to "active".'),
+  property_visibility: z.enum(["active", "hidden", "all"]).default("active").describe('Filter properties by status. Defaults to "active".'),
   properties: z.object({
     properties_ids: z.array(z.string()).optional().describe(getIdFieldDescription('properties_ids', 'Property', 'property directory report')),
     property_groups_ids: z.array(z.string()).optional().describe(getIdFieldDescription('property_groups_ids', 'Property Group', 'property group directory report')),
@@ -127,7 +138,7 @@ export const delinquencyAsOfBaseSchema = z.object({
   }).optional().describe('Optional. Filter by specific property-related IDs.'),
   occurred_on_to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be in YYYY-MM-DD format").describe("Required. Date to run the report as of in YYYY-MM-DD format."), 
   delinquency_note_range: z.string().optional().describe('Optional. Filter by delinquency note range.'),
-  tenant_statuses: z.array(z.string()).default(["0", "4"].slice()).optional().describe('Filter by tenant status. Defaults to ["0", "4"].'), 
+  tenant_statuses: z.array(z.enum(["0", "1", "2", "3", "4"])).default(["0", "4"]).optional().describe('Filter by tenant status. Valid values: "0"=Current, "1"=Past, "2"=Future, "3"=Evict, "4"=Notice. Defaults to ["0", "4"] (Current and Notice tenants).'), 
   tags: z.string().optional().describe('Optional. Filter by property tags.'),
   amount_owed_in_account: z.string().default("all").optional().describe('Filter by amount owed in account. Defaults to "all".'), 
   balance_operator: z.object({
@@ -188,7 +199,7 @@ export async function getDelinquencyAsOfReport(args: z.infer<typeof delinquencyA
 export function registerDelinquencyAsOfReportTool(server: McpServer) {
   server.tool(
     "get_delinquency_as_of_report",
-    "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
+    "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: tenant_statuses uses numeric codes: 0=Current, 1=Past, 2=Future, 3=Evict, 4=Notice.",
     delinquencyAsOfBaseSchema.shape,
     async (args: unknown, _extra: unknown) => {
       try {

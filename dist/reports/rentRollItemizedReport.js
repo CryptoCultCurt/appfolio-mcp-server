@@ -90,9 +90,20 @@ const rentRollItemizedInputSchema = zod_1.z.object({
         owners_ids: zod_1.z.array(zod_1.z.string()).optional()
             .describe((0, validation_js_1.getIdFieldDescription)('owner', 'Owner Directory Report')),
     }).optional(),
-    unit_visibility: zod_1.z.string().default("active").describe('Unit visibility filter'),
+    unit_visibility: zod_1.z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active".'),
     tags: zod_1.z.string().optional().describe('Tags filter'),
-    gl_account_ids: zod_1.z.array(zod_1.z.string()).optional()
+    gl_account_ids: zod_1.z.union([
+        zod_1.z.array(zod_1.z.string()),
+        zod_1.z.string().transform((str) => {
+            try {
+                const parsed = JSON.parse(str);
+                return Array.isArray(parsed) ? parsed : [str];
+            }
+            catch {
+                return [str];
+            }
+        })
+    ]).optional()
         .describe('Array of GL account IDs (internal database IDs, NOT GL account numbers). These are numeric strings like "123", "456". Do NOT use GL account numbers like "4630", "4635". Use the Chart of Accounts Report to lookup gl_account_ids by GL account number or name.'),
     as_of_date: zod_1.z.string().describe('Report date in YYYY-MM-DD format'),
     columns: zod_1.z.array(zod_1.z.enum(exports.RENT_ROLL_ITEMIZED_COLUMNS)).optional()
@@ -124,6 +135,12 @@ function registerRentRollItemizedReportTool(server) {
     server.tool("get_rent_roll_itemized_report", "Returns rent roll itemized report for the given filters. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids, gl_account_ids) must be numeric strings (e.g. '123'), NOT names. CRITICAL: gl_account_ids are internal database IDs, NOT GL account numbers! Do not use GL account numbers like '4630', '4635' - use the Chart of Accounts Report first to lookup the correct gl_account_ids.", rentRollItemizedInputSchema.shape, async (args, _extra) => {
         try {
             console.log('Rent Roll Itemized Report - Received args:', JSON.stringify(args, null, 2));
+            // Debug GL account IDs specifically
+            if (args.gl_account_ids) {
+                console.log('GL Account IDs type:', typeof args.gl_account_ids);
+                console.log('GL Account IDs value:', args.gl_account_ids);
+                console.log('GL Account IDs is array:', Array.isArray(args.gl_account_ids));
+            }
             // Validate arguments against schema
             const parseResult = rentRollItemizedInputSchema.safeParse(args);
             if (!parseResult.success) {

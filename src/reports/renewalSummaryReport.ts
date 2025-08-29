@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import dotenv from 'dotenv';
-import { makeAppfolioApiCall } from '../appfolio.js';
-import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation.js';
+import { makeAppfolioApiCall } from '../appfolio';
+import { validatePropertiesIds, throwOnValidationErrors, getIdFieldDescription } from '../validation';
 
 dotenv.config();
 
@@ -47,7 +47,7 @@ export const RENEWAL_SUMMARY_COLUMNS = [
 ] as const;
 
 // TODO: Update RenewalSummaryArgs to use expiring_from and expiring_to instead of start_on_from and start_on_to
-export type RenewalStatus = "all" | "awaiting_response" | "countersigned" | "pending" | "skipped" | "notice_to_vacate";
+export type RenewalStatus = "all" | "Renewed" | "Did Not Renew" | "Month To Month" | "Pending" | "Cancelled by User";
 
 export type RenewalSummaryArgs = {
   properties?: {
@@ -107,7 +107,7 @@ export type RenewalSummaryResult = {
 };
 
 // Zod schema for Renewal Summary Report arguments
-const renewalStatusSchema = z.enum(["all", "awaiting_response", "countersigned", "pending", "skipped", "notice_to_vacate"]);
+const renewalStatusSchema = z.enum(["all", "Renewed", "Did Not Renew", "Month To Month", "Pending", "Cancelled by User"]);
 const renewalSummaryArgsSchema = z.object({
   properties: z.object({
     properties_ids: z.array(z.string()).optional()
@@ -119,7 +119,7 @@ const renewalSummaryArgsSchema = z.object({
     owners_ids: z.array(z.string()).optional()
       .describe(getIdFieldDescription('owner', 'Owner Directory Report'))
   }).optional().describe('Filter results based on properties, groups, portfolios, or owners'),
-  unit_visibility: z.enum(["active", "hidden", "all"]).optional().describe('Filter units by status. Defaults to "active"'),
+  unit_visibility: z.enum(["active", "hidden", "all"]).default("active").describe('Filter units by status. Defaults to "active"'),
   start_on_from: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The start month for the reporting period based on lease start date (YYYY-MM). Required.'),
   start_on_to: z.string().regex(/^\d{4}-\d{2}$/, "Date must be in YYYY-MM format").describe('The end month for the reporting period based on lease start date (YYYY-MM). Required.'),
   statuses: z.array(renewalStatusSchema).optional().default(["all"]).describe('Filter by renewal status. Defaults to ["all"]'),
@@ -156,17 +156,21 @@ export async function getRenewalSummaryReport(args: RenewalSummaryArgs): Promise
 export function registerRenewalSummaryReportTool(server: McpServer) {
   server.tool(
     "get_renewal_summary_report",
-    "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
+    "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: All string parameters should be properly quoted JSON strings (e.g. \"active\", not active).",
     renewalSummaryArgsSchema.shape,
     async (args, _extra: unknown) => {
       try {
+        // Log the raw arguments to help debug parsing issues
+        console.log('Renewal Summary Report - Raw args received:', JSON.stringify(args, null, 2));
+        
         // Validate arguments against schema
         const parseResult = renewalSummaryArgsSchema.safeParse(args);
         if (!parseResult.success) {
           const errorMessages = parseResult.error.errors.map(err => 
             `${err.path.join('.')}: ${err.message}`
           ).join('; ');
-          throw new Error(`Invalid arguments: ${errorMessages}`);
+          console.error('Renewal Summary Report - Schema validation failed:', errorMessages);
+          throw new Error(`Invalid arguments: ${errorMessages}. Note: All string values should be properly quoted in JSON format (e.g. "active", not active).`);
         }
 
         const result = await getRenewalSummaryReport(parseResult.data);
