@@ -117,6 +117,7 @@ function createJwksVerifier(options) {
             if (segments !== 3) {
                 // eslint-disable-next-line no-console
                 console.error(`Access token has ${segments} segments; expected 3 (signed JWT/JWS).`);
+                console.log("token", token);
                 if (segments === 5) {
                     throw new errors_js_1.InvalidTokenError("Encrypted (JWE) token provided. Configure Auth0 API to issue signed RS256 JWT access tokens.");
                 }
@@ -277,6 +278,18 @@ async function startHttpServer() {
         console.warn(`Port ${requestedPort} is in use; using port ${selectedPort} instead.`);
     }
     const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${selectedPort}/mcp`);
+    // Optional: quick token introspection endpoint for debugging
+    app.get("/whoami", ...(authMiddleware ? [authMiddleware] : []), (req, res) => {
+        const auth = req.auth || {};
+        res.status(200).json({
+            ok: true,
+            clientId: auth.clientId,
+            scopes: auth.scopes,
+            expiresAt: auth.expiresAt,
+            resource: auth.resource ? String(auth.resource) : undefined,
+            extra: auth.extra,
+        });
+    });
     // Publish OAuth metadata for this MCP resource (computed after final port is selected)
     if (proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) {
         // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
@@ -308,7 +321,7 @@ async function startHttpServer() {
     // Session transport store
     const transports = {};
     // Streamable HTTP endpoint (supports GET/POST/DELETE)
-    app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {
+    const mcpHandler = async (req, res) => {
         try {
             const existingSessionIdHeader = req.headers["mcp-session-id"];
             let transport;
@@ -367,6 +380,12 @@ async function startHttpServer() {
                 });
             }
         }
+    };
+    app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
+    app.all("/mcp/", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
+    // Friendly root route to verify service is up (protected when auth enabled)
+    app.get("/", ...(authMiddleware ? [authMiddleware] : []), (_req, res) => {
+        res.status(200).send("AppFolio MCP server is running. Use POST /mcp to initialize a session.");
     });
     // SSE fallback endpoints (deprecated transport)
     app.get("/sse", ...(authMiddleware ? [authMiddleware] : []), async (req, res) => {

@@ -280,6 +280,19 @@ async function startHttpServer() {
   }
   const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${selectedPort}/mcp`);
 
+  // Optional: quick token introspection endpoint for debugging
+  app.get("/whoami", ...(authMiddleware ? [authMiddleware] : []), (req, res) => {
+    const auth = (req as any).auth || {};
+    res.status(200).json({
+      ok: true,
+      clientId: auth.clientId,
+      scopes: auth.scopes,
+      expiresAt: auth.expiresAt,
+      resource: auth.resource ? String(auth.resource) : undefined,
+      extra: auth.extra,
+    });
+  });
+
   // Publish OAuth metadata for this MCP resource (computed after final port is selected)
   if (proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) {
     // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
@@ -377,8 +390,8 @@ async function startHttpServer() {
   app.all("/mcp", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
   app.all("/mcp/", ...(authMiddleware ? [authMiddleware] : []), mcpHandler);
 
-  // Friendly root route to verify service is up
-  app.get("/", (_req, res) => {
+  // Friendly root route to verify service is up (protected when auth enabled)
+  app.get("/", ...(authMiddleware ? [authMiddleware] : []), (_req, res) => {
     res.status(200).send("AppFolio MCP server is running. Use POST /mcp to initialize a session.");
   });
 
