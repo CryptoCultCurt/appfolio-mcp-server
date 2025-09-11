@@ -117,7 +117,6 @@ function createJwksVerifier(options) {
             if (segments !== 3) {
                 // eslint-disable-next-line no-console
                 console.error(`Access token has ${segments} segments; expected 3 (signed JWT/JWS).`);
-                console.log("token", token);
                 if (segments === 5) {
                     throw new errors_js_1.InvalidTokenError("Encrypted (JWE) token provided. Configure Auth0 API to issue signed RS256 JWT access tokens.");
                 }
@@ -253,16 +252,6 @@ async function startHttpServer() {
         origin: process.env.CORS_ORIGIN || "*",
         exposedHeaders: ["Mcp-Session-Id"],
     }));
-    // Optional OAuth 2.1 Bearer token validation
-    const jwksUrl = process.env.OAUTH_JWKS_URL;
-    const issuer = process.env.OAUTH_ISSUER;
-    const audience = process.env.OAUTH_AUDIENCE;
-    const inlineJwksJson = process.env.OAUTH_JWKS_JSON;
-    const resourceMetadataUrl = process.env.OAUTH_RESOURCE_METADATA_URL; // Optional: used in WWW-Authenticate
-    const useAuth = Boolean(jwksUrl);
-    const authMiddleware = useAuth
-        ? (0, bearerAuth_js_1.requireBearerAuth)({ verifier: createJwksVerifier({ jwksUrl: jwksUrl, issuer, audience, inlineJwksJson }), resourceMetadataUrl })
-        : undefined;
     // Optional OAuth 2.1 Authorization Server proxy routes (so clients like Inspector can complete OAuth flows)
     const proxyAuthorizationUrl = process.env.OAUTH_PROXY_AUTHORIZATION_URL;
     const proxyTokenUrl = process.env.OAUTH_PROXY_TOKEN_URL;
@@ -278,6 +267,31 @@ async function startHttpServer() {
         console.warn(`Port ${requestedPort} is in use; using port ${selectedPort} instead.`);
     }
     const resourceServerUrl = new URL(process.env.RESOURCE_SERVER_URL || `http://localhost:${selectedPort}/mcp`);
+    // Recreate OAuth verifier/middleware now that we know the final port, and publish PR metadata
+    const jwksUrl = process.env.OAUTH_JWKS_URL;
+    const issuer = process.env.OAUTH_ISSUER ? process.env.OAUTH_ISSUER.replace(/\/+$/, "") : undefined; // trim trailing slash
+    const audience = process.env.OAUTH_AUDIENCE;
+    const inlineJwksJson = process.env.OAUTH_JWKS_JSON;
+    const resourceMetadataUrlFinal = (process.env.OAUTH_RESOURCE_METADATA_URL && process.env.OAUTH_RESOURCE_METADATA_URL.trim().length > 0)
+        ? process.env.OAUTH_RESOURCE_METADATA_URL
+        : `${new URL(`http://localhost:${selectedPort}/.well-known/oauth-protected-resource`)}`;
+    const useAuth = Boolean(jwksUrl);
+    const authMiddleware = useAuth
+        ? (0, bearerAuth_js_1.requireBearerAuth)({
+            verifier: createJwksVerifier({ jwksUrl: jwksUrl, issuer, audience, inlineJwksJson }),
+            resourceMetadataUrl: resourceMetadataUrlFinal,
+        })
+        : undefined;
+    // Serve OAuth Protected Resource metadata explicitly so MCP clients can discover the AS and how to send bearer tokens
+    app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+        const issuerNoSlash = oauthIssuer ? oauthIssuer.replace(/\/+$/, "") : undefined;
+        res.status(200).json({
+            resource: resourceServerUrl.toString(),
+            authorization_servers: issuerNoSlash ? [issuerNoSlash] : [],
+            bearer_methods_supported: ["header"],
+            scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["openid", "profile", "email", "offline_access"],
+        });
+    });
     // Optional: quick token introspection endpoint for debugging
     app.get("/whoami", ...(authMiddleware ? [authMiddleware] : []), (req, res) => {
         const auth = req.auth || {};
