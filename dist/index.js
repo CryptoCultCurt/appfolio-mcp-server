@@ -290,6 +290,8 @@ async function startHttpServer() {
             authorization_servers: issuerNoSlash ? [issuerNoSlash] : [],
             bearer_methods_supported: ["header"],
             scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["openid", "profile", "email", "offline_access"],
+            // Explicitly indicate refresh token support is required
+            token_types_supported: ["access_token", "refresh_token"],
         });
     });
     // Optional: quick token introspection endpoint for debugging
@@ -314,7 +316,7 @@ async function startHttpServer() {
             revocation_endpoint: proxyRevocationUrl,
             registration_endpoint: proxyRegistrationUrl, // Critical for MCP Inspector!
             response_types_supported: ["code"], // MCP uses authorization code flow
-            scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["read:user", "write:user"],
+            scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["read:user", "write:user", "offline_access"],
             service_documentation: serviceDocumentationUrl,
             jwks_uri: jwksUrl,
             grant_types_supported: ["authorization_code", "refresh_token"],
@@ -324,6 +326,8 @@ async function startHttpServer() {
             code_challenge_methods_supported: ["S256", "plain"],
             // Dynamic Client Registration metadata
             client_registration_types_supported: ["automatic"],
+            // Indicate that refresh tokens are supported and required
+            token_endpoint_auth_signing_alg_values_supported: ["RS256"],
         };
         app.use((0, router_js_1.mcpAuthMetadataRouter)({
             oauthMetadata,
