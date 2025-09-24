@@ -260,7 +260,9 @@ async function startHttpServer() {
   const proxyRevocationUrl = process.env.OAUTH_PROXY_REVOCATION_URL;
   const proxyRegistrationUrl = process.env.OAUTH_PROXY_REGISTRATION_URL;
   const oauthIssuer = process.env.OAUTH_ISSUER; // Upstream issuer
-  const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || "").split(/\s+/).filter(Boolean);
+  // Default to common OAuth scopes if not specified
+  const defaultScopes = "openid profile email";
+  const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || defaultScopes).split(/\s+/).filter(Boolean);
   const serviceDocumentationUrl = process.env.OAUTH_SERVICE_DOC_URL;
   const requestedPort = Number(process.env.HTTP_PORT || process.env.PORT || 3000);
   const selectedPort = await findAvailablePort(requestedPort, 50);
@@ -279,26 +281,78 @@ async function startHttpServer() {
   const resourceMetadataUrlFinal = (process.env.OAUTH_RESOURCE_METADATA_URL && process.env.OAUTH_RESOURCE_METADATA_URL.trim().length > 0)
     ? process.env.OAUTH_RESOURCE_METADATA_URL
     : `${new URL(`http://localhost:${selectedPort}/.well-known/oauth-protected-resource`)}`;
-  const useAuth = Boolean(jwksUrl);
+  // Allow temporary auth bypass for testing MCP clients that don't support OAuth properly
+  const bypassAuth = process.env.BYPASS_AUTH_FOR_TESTING === "true";
+  const inspectorMode = process.env.INSPECTOR_MODE === "true"; // Special mode for MCP Inspector OAuth bug
+  const useAuth = Boolean(jwksUrl) && !bypassAuth && !inspectorMode;
+  
+  if (bypassAuth) {
+    console.log("⚠️ WARNING: Authentication bypassed for testing. Do not use in production!");
+  } else if (inspectorMode) {
+    console.log("🔧 INSPECTOR MODE: OAuth metadata served but requests not authenticated (MCP Inspector OAuth bug workaround)");
+  }
+  
+  // Custom auth middleware with better debugging
   const authMiddleware = useAuth
-    ? requireBearerAuth({
-        verifier: createJwksVerifier({ jwksUrl: jwksUrl as string, issuer, audience, inlineJwksJson }),
-        resourceMetadataUrl: resourceMetadataUrlFinal,
-      })
+    ? (req: any, res: any, next: any) => {
+        const authHeader = req.headers.authorization || req.headers.Authorization;
+        console.log(`🔍 Auth Debug - Header received: "${authHeader}"`);
+        console.log(`🔍 Auth Debug - All headers:`, Object.keys(req.headers).filter(h => h.toLowerCase().includes('auth')));
+        
+        if (!authHeader) {
+          console.log(`❌ No Authorization header found`);
+          return res.status(401).json({
+            error: "invalid_token",
+            error_description: "Missing Authorization header"
+          });
+        }
+        
+        // More flexible Bearer token parsing
+        let token: string;
+        if (authHeader.toLowerCase().startsWith('bearer ')) {
+          token = authHeader.substring(7); // Remove "Bearer " prefix
+        } else {
+          // Try to handle cases where token is sent without Bearer prefix
+          console.log(`⚠️ Authorization header doesn't start with 'Bearer ', treating as raw token`);
+          token = authHeader;
+        }
+        
+        console.log(`🔍 Extracted token (first 20 chars): ${token.substring(0, 20)}...`);
+        
+        // Use the original requireBearerAuth but with our extracted token
+        const verifier = createJwksVerifier({ jwksUrl: jwksUrl as string, issuer, audience, inlineJwksJson });
+        
+        verifier.verifyAccessToken(token)
+          .then(authResult => {
+            console.log(`✅ Token verification successful for client: ${authResult.clientId}`);
+            (req as any).auth = authResult;
+            next();
+          })
+          .catch(error => {
+            console.log(`❌ Token verification failed:`, error.message);
+            res.status(401).json({
+              error: "invalid_token", 
+              error_description: error.message || "Invalid token"
+            });
+          });
+      }
     : undefined;
 
   // Serve OAuth Protected Resource metadata explicitly so MCP clients can discover the AS and how to send bearer tokens
-  app.get("/.well-known/oauth-protected-resource", (_req, res) => {
+  // Serve this in both auth mode and inspector mode
+  if (useAuth || inspectorMode) {
+    app.get("/.well-known/oauth-protected-resource", (_req, res) => {
     const issuerNoSlash = oauthIssuer ? oauthIssuer.replace(/\/+$/, "") : undefined;
     res.status(200).json({
       resource: resourceServerUrl.toString(),
       authorization_servers: issuerNoSlash ? [issuerNoSlash] : [],
       bearer_methods_supported: ["header"],
-      scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["openid", "profile", "email", "offline_access"],
+      scopes_supported: oauthScopesSupported,
       // Explicitly indicate refresh token support is required
       token_types_supported: ["access_token", "refresh_token"],
     });
-  });
+    });
+  }
 
   // Optional: quick token introspection endpoint for debugging
   app.get("/whoami", ...(authMiddleware ? [authMiddleware] : []), (req, res) => {
@@ -313,8 +367,33 @@ async function startHttpServer() {
     });
   });
 
+  // Session status endpoint for debugging
+  app.get("/sessions", ...(authMiddleware ? [authMiddleware] : []), (req, res) => {
+    const now = new Date();
+    const sessionSummary = Object.keys(transports).map(sessionId => {
+      const metadata = sessionMetadata[sessionId];
+      return {
+        sessionId,
+        created: metadata?.created,
+        lastUsed: metadata?.lastUsed,
+        requestCount: metadata?.requestCount || 0,
+        ageMinutes: metadata ? Math.round((now.getTime() - metadata.created.getTime()) / 60000) : 0,
+        idleMinutes: metadata ? Math.round((now.getTime() - metadata.lastUsed.getTime()) / 60000) : 0,
+        transportType: transports[sessionId].constructor.name
+      };
+    });
+    
+    res.status(200).json({
+      totalSessions: Object.keys(transports).length,
+      sessions: sessionSummary,
+      serverUptime: process.uptime(),
+      sessionTimeoutMinutes: SESSION_TIMEOUT_MS / 60000
+    });
+  });
+
   // Publish OAuth metadata for this MCP resource (computed after final port is selected)
-  if (proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) {
+  // Always publish OAuth metadata if configured, even in inspector mode
+  if ((proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) && (useAuth || inspectorMode)) {
     // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
     const oauthMetadata = {
       issuer: oauthIssuer,
@@ -323,7 +402,7 @@ async function startHttpServer() {
       revocation_endpoint: proxyRevocationUrl,
       registration_endpoint: proxyRegistrationUrl,  // Critical for MCP Inspector!
       response_types_supported: ["code"] as string[],  // MCP uses authorization code flow
-      scopes_supported: oauthScopesSupported.length ? oauthScopesSupported : ["read:user", "write:user", "offline_access"],
+      scopes_supported: oauthScopesSupported,
       service_documentation: serviceDocumentationUrl,
       jwks_uri: jwksUrl,
       grant_types_supported: ["authorization_code", "refresh_token"] as string[],
@@ -347,64 +426,223 @@ async function startHttpServer() {
     );
   }
 
-  // Session transport store
-  const transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport> = {};
+  // Request logging middleware
+  app.use((req, res, next) => {
+    const timestamp = new Date().toISOString();
+    console.log(`📥 ${timestamp} ${req.method} ${req.url}`);
+    if (req.headers.authorization) {
+      console.log(`🔑 Auth header present: ${req.headers.authorization.substring(0, 20)}...`);
+    } else {
+      console.log(`🔑 No auth header`);
+    }
+    next();
+  });
 
-  // Streamable HTTP endpoint (supports GET/POST/DELETE)
+  // Session transport store with metadata
+  const transports: Record<string, StreamableHTTPServerTransport | SSEServerTransport> = {};
+  const sessionMetadata: Record<string, { created: Date; lastUsed: Date; requestCount: number }> = {};
+  
+  // Session cleanup - remove stale sessions every 5 minutes
+  const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+  setInterval(() => {
+    const now = new Date();
+    const staleSessionIds = Object.keys(sessionMetadata).filter(sessionId => {
+      const metadata = sessionMetadata[sessionId];
+      return now.getTime() - metadata.lastUsed.getTime() > SESSION_TIMEOUT_MS;
+    });
+    
+    staleSessionIds.forEach(sessionId => {
+      console.log(`Cleaning up stale session: ${sessionId}`);
+      if (transports[sessionId]) {
+        try {
+          // Try to close the transport gracefully
+          const transport = transports[sessionId];
+          if ('close' in transport && typeof transport.close === 'function') {
+            transport.close();
+          }
+        } catch (error) {
+          console.warn(`Error closing transport for session ${sessionId}:`, error);
+        }
+        delete transports[sessionId];
+      }
+      delete sessionMetadata[sessionId];
+    });
+    
+    if (staleSessionIds.length > 0) {
+      console.log(`Cleaned up ${staleSessionIds.length} stale sessions. Active sessions: ${Object.keys(transports).length}`);
+    }
+  }, 5 * 60 * 1000); // Run every 5 minutes
+
+  // Helper function to create a new session
+  const createNewSession = async (): Promise<StreamableHTTPServerTransport> => {
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      enableJsonResponse: true,
+      onsessioninitialized: (sid: string) => {
+        transports[sid] = transport;
+        sessionMetadata[sid] = {
+          created: new Date(),
+          lastUsed: new Date(),
+          requestCount: 0
+        };
+        console.log(`New session created: ${sid} (total active: ${Object.keys(transports).length})`);
+      },
+    });
+    
+    transport.onclose = () => {
+      const sid = transport.sessionId;
+      if (sid && transports[sid]) {
+        delete transports[sid];
+        delete sessionMetadata[sid];
+        console.log(`Session closed: ${sid} (remaining active: ${Object.keys(transports).length})`);
+      }
+    };
+    
+    const server = createMcpServer();
+    await server.connect(transport);
+    return transport;
+  };
+  
+  // Helper function to update session activity
+  const updateSessionActivity = (sessionId: string) => {
+    if (sessionMetadata[sessionId]) {
+      sessionMetadata[sessionId].lastUsed = new Date();
+      sessionMetadata[sessionId].requestCount++;
+    }
+  };
+
+  // Streamable HTTP endpoint with robust session handling
   const mcpHandler = async (req: express.Request, res: express.Response) => {
     try {
       const existingSessionIdHeader = req.headers["mcp-session-id"] as string | undefined;
+      const requestId = req.body?.id || null;
+      const method = req.body?.method || "unknown";
+      
+      console.log(`MCP Request: ${method} (session: ${existingSessionIdHeader || 'none'}, id: ${requestId})`);
+      
       let transport: StreamableHTTPServerTransport | undefined;
 
-      console.log("existingSessionIdHeader", existingSessionIdHeader);
-      console.log("transports", transports);
-
-      if (existingSessionIdHeader && transports[existingSessionIdHeader]) {
+      // Case 1: Client provided session ID - try to use existing session
+      if (existingSessionIdHeader) {
         const existing = transports[existingSessionIdHeader];
-        if (existing instanceof StreamableHTTPServerTransport) {
+        if (existing && existing instanceof StreamableHTTPServerTransport) {
           transport = existing;
-        } else {
+          updateSessionActivity(existingSessionIdHeader);
+          console.log(`Using existing session: ${existingSessionIdHeader}`);
+        } else if (existing) {
+          // Session exists but wrong transport type
           res.status(400).json({
             jsonrpc: "2.0",
-            error: { code: -32000, message: "Bad Request: Session exists but uses a different transport protocol" },
-            id: null,
+            error: { 
+              code: -32000, 
+              message: "Bad Request: Session exists but uses a different transport protocol",
+              data: { sessionId: existingSessionIdHeader }
+            },
+            id: requestId,
+          });
+          return;
+        } else {
+          // Session ID provided but doesn't exist - could be expired or invalid
+          console.log(`Session ${existingSessionIdHeader} not found, creating new session`);
+          transport = await createNewSession();
+          
+          // Return error for non-initialize requests with invalid session
+          if (!isInitializeRequest(req.body)) {
+            // Include new session ID in response headers BEFORE sending JSON
+            res.setHeader("Mcp-Session-Id", transport.sessionId || "");
+            res.status(400).json({
+              jsonrpc: "2.0",
+              error: { 
+                code: -32001, 
+                message: "Session expired or invalid. Please initialize a new session.",
+                data: { 
+                  expiredSessionId: existingSessionIdHeader,
+                  newSessionId: transport.sessionId,
+                  action: "Please retry your request with the new session ID"
+                }
+              },
+              id: requestId,
+            });
+            return;
+          }
+        }
+      }
+      
+      // Case 2: No session ID provided
+      if (!transport) {
+        if (req.method === "POST" && isInitializeRequest(req.body)) {
+          // Initialize request without session - create new session
+          console.log("Creating new session for initialize request");
+          transport = await createNewSession();
+        } else if (req.method === "POST") {
+          // Non-initialize request without session - try to auto-recover
+          console.log(`Auto-creating session for ${method} request`);
+          transport = await createNewSession();
+          
+          // For some clients, we might want to return an error instead of auto-creating
+          // Uncomment this block if auto-creation causes issues:
+          /*
+          res.status(400).json({
+            jsonrpc: "2.0",
+            error: { 
+              code: -32002, 
+              message: "No session provided. Please initialize a session first.",
+              data: { 
+                method: method,
+                action: "Send an initialize request first, then use the returned session ID"
+              }
+            },
+            id: requestId,
+          });
+          return;
+          */
+        } else {
+          // GET/DELETE without session
+          res.status(400).json({
+            jsonrpc: "2.0",
+            error: { 
+              code: -32003, 
+              message: "Session required for this request method",
+              data: { method: req.method }
+            },
+            id: requestId,
           });
           return;
         }
-      } else if (!existingSessionIdHeader && req.method === "POST" && isInitializeRequest(req.body)) {
-        transport = new StreamableHTTPServerTransport({
-          sessionIdGenerator: () => randomUUID(),
-          enableJsonResponse: true,
-          onsessioninitialized: (sid: string) => {
-            transports[sid] = transport as StreamableHTTPServerTransport;
-          },
-        });
-        transport.onclose = () => {
-          const sid = (transport as StreamableHTTPServerTransport).sessionId;
-          if (sid && transports[sid]) delete transports[sid];
-        };
-        const server = createMcpServer();
-        console.log("server", server);
-        console.log("transport", transport);
-        await server.connect(transport);
-      } else {
-        res.status(400).json({
-          jsonrpc: "2.0",
-          error: { code: -32000, message: "Bad Request: No valid session ID provided" },
-          id: null,
-        });
-        return;
       }
 
-      await (transport as StreamableHTTPServerTransport).handleRequest(req as any, res as any, (req as any).body);
-    } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error("Error handling MCP request:", error);
-      if (!res.headersSent) {
+      // Case 3: Handle the request with the transport
+      if (transport) {
+        console.log(`Processing request with session: ${transport.sessionId}`);
+        await transport.handleRequest(req as any, res as any, req.body);
+      } else {
+        // This shouldn't happen, but just in case
         res.status(500).json({
           jsonrpc: "2.0",
-          error: { code: -32603, message: "Internal server error" },
-          id: null,
+          error: { code: -32603, message: "Failed to create or find session transport" },
+          id: requestId,
+        });
+      }
+      
+    } catch (error) {
+      console.error("Error handling MCP request:", error);
+      const requestId = req.body?.id || null;
+      
+      if (!res.headersSent) {
+        // Provide more detailed error information
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
+        res.status(500).json({
+          jsonrpc: "2.0",
+          error: { 
+            code: -32603, 
+            message: "Internal server error",
+            data: { 
+              error: errorMessage,
+              method: req.body?.method || "unknown",
+              sessionId: req.headers["mcp-session-id"] || null
+            }
+          },
+          id: requestId,
         });
       }
     }
