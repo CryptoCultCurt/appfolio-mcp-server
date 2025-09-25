@@ -279,12 +279,16 @@ async function startHttpServer() {
     // Allow temporary auth bypass for testing MCP clients that don't support OAuth properly
     const bypassAuth = process.env.BYPASS_AUTH_FOR_TESTING === "true";
     const inspectorMode = process.env.INSPECTOR_MODE === "true"; // Special mode for MCP Inspector OAuth bug
-    const useAuth = Boolean(jwksUrl) && !bypassAuth && !inspectorMode;
+    const hybridMode = process.env.HYBRID_MODE === "true"; // Accept both OAuth and no-auth requests
+    const useAuth = Boolean(jwksUrl) && !bypassAuth && !inspectorMode && !hybridMode;
     if (bypassAuth) {
         console.log("⚠️ WARNING: Authentication bypassed for testing. Do not use in production!");
     }
     else if (inspectorMode) {
         console.log("🔧 INSPECTOR MODE: OAuth metadata served but requests not authenticated (MCP Inspector OAuth bug workaround)");
+    }
+    else if (hybridMode) {
+        console.log("🔀 HYBRID MODE: OAuth preferred but requests work without auth (maximum compatibility)");
     }
     // Custom auth middleware with better debugging
     const authMiddleware = useAuth
@@ -328,8 +332,8 @@ async function startHttpServer() {
         }
         : undefined;
     // Serve OAuth Protected Resource metadata explicitly so MCP clients can discover the AS and how to send bearer tokens
-    // Serve this in both auth mode and inspector mode
-    if (useAuth || inspectorMode) {
+    // Serve this in both auth mode and inspector/hybrid mode
+    if (useAuth || inspectorMode || hybridMode) {
         app.get("/.well-known/oauth-protected-resource", (_req, res) => {
             const issuerNoSlash = oauthIssuer ? oauthIssuer.replace(/\/+$/, "") : undefined;
             res.status(200).json({
@@ -377,8 +381,8 @@ async function startHttpServer() {
         });
     });
     // Publish OAuth metadata for this MCP resource (computed after final port is selected)
-    // Always publish OAuth metadata if configured, even in inspector mode
-    if ((proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) && (useAuth || inspectorMode)) {
+    // Always publish OAuth metadata if configured, even in inspector/hybrid mode
+    if ((proxyAuthorizationUrl && proxyTokenUrl && oauthIssuer) && (useAuth || inspectorMode || hybridMode)) {
         // OAuth metadata that supports both standard OAuth and Dynamic Client Registration
         const oauthMetadata = {
             issuer: oauthIssuer,
