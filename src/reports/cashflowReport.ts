@@ -21,15 +21,28 @@ export async function getCashflowReport(args: CashflowReportArgs) {
   return makeAppfolioApiCall('cash_flow_detail.json', args);
 }
 
-// Zod schema for Cash Flow Report arguments
-const cashflowInputSchema = z.object({
+// Flattened Zod schema for Cash Flow Report arguments
+// (Nested objects cause TypeScript type depth issues with MCP SDK)
+const cashflowInputSchema = {
+  property_visibility: z.string().describe('Property visibility filter'),
+  properties_ids: z.array(z.string()).optional().describe('Filter by specific property IDs'),
+  property_groups_ids: z.array(z.string()).optional().describe('Filter by property group IDs'),
+  portfolios_ids: z.array(z.string()).optional().describe('Filter by portfolio IDs'),
+  owners_ids: z.array(z.string()).optional().describe('Filter by owner IDs'),
+  posted_on_from: z.string().describe('Start date for the posting period (YYYY-MM-DD) - Required'),
+  posted_on_to: z.string().describe('End date for the posting period (YYYY-MM-DD) - Required'),
+  gl_account_map_id: z.string().optional().describe('Filter by GL account map ID'),
+  exclude_suppressed_fees: z.string().optional().describe('Exclude suppressed fees ("0" or "1")'),
+  columns: z.array(z.string()).optional().describe('Specific columns to include'),
+};
+
+// Schema for internal validation (with nested properties structure)
+const cashflowValidationSchema = z.object({
   property_visibility: z.string(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
+  properties_ids: z.array(z.string()).optional(),
+  property_groups_ids: z.array(z.string()).optional(),
+  portfolios_ids: z.array(z.string()).optional(),
+  owners_ids: z.array(z.string()).optional(),
   posted_on_from: z.string(),
   posted_on_to: z.string(),
   gl_account_map_id: z.string().optional(),
@@ -37,15 +50,34 @@ const cashflowInputSchema = z.object({
   columns: z.array(z.string()).optional(),
 });
 
+// Transform flat input to nested API format
+function transformToApiArgs(input: z.infer<typeof cashflowValidationSchema>): CashflowReportArgs {
+  const { properties_ids, property_groups_ids, portfolios_ids, owners_ids, ...rest } = input;
+  
+  const hasProperties = properties_ids || property_groups_ids || portfolios_ids || owners_ids;
+  
+  return {
+    ...rest,
+    ...(hasProperties && {
+      properties: {
+        ...(properties_ids && { properties_ids }),
+        ...(property_groups_ids && { property_groups_ids }),
+        ...(portfolios_ids && { portfolios_ids }),
+        ...(owners_ids && { owners_ids }),
+      }
+    })
+  };
+}
+
 export function registerCashflowReportTool(server: McpServer) {
   server.tool(
     "get_cashflow_report",
     "Returns Cash Flow Details including income and expenses for given time period.",
-    cashflowInputSchema.shape,
+    cashflowInputSchema,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema
-        const parseResult = cashflowInputSchema.safeParse(args);
+        const parseResult = cashflowValidationSchema.safeParse(args);
         if (!parseResult.success) {
           const errorMessages = parseResult.error.errors.map(err => 
             `${err.path.join('.')}: ${err.message}`
@@ -53,7 +85,8 @@ export function registerCashflowReportTool(server: McpServer) {
           throw new Error(`Invalid arguments: ${errorMessages}`);
         }
 
-        const result = await getCashflowReport(parseResult.data as CashflowReportArgs);
+        const apiArgs = transformToApiArgs(parseResult.data);
+        const result = await getCashflowReport(apiArgs);
         return {
           content: [
             {
