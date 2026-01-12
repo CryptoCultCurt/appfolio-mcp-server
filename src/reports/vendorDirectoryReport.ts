@@ -80,7 +80,7 @@ export function registerVendorDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_vendor_directory_report",
     "Retrieves a directory of vendors. IMPORTANT: All ID parameters must be numeric strings (e.g. '123'), NOT names.",
-    vendorDirectoryArgsSchema.shape,
+    vendorDirectoryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

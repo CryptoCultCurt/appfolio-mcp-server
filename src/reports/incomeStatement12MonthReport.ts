@@ -81,7 +81,7 @@ export function registerIncomeStatement12MonthReportTool(server: McpServer) {
   server.tool(
     "get_income_statement_12_month_report",
     "Generates a 12-month income statement report.",
-    incomeStatement12MonthArgsSchema.shape,
+    incomeStatement12MonthArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

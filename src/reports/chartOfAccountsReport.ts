@@ -61,7 +61,7 @@ export function registerChartOfAccountsReportTool(server: McpServer) {
   server.tool(
     "get_chart_of_accounts_report",
     "Returns the chart of accounts with GL account information. Use this to lookup gl_account_ids by GL account number ('number' field) or name ('account_name' field). IMPORTANT: Column names are specific - use 'number' for GL account number, 'account_name' for account name, 'gl_account_id' for internal database ID.",
-    chartOfAccountsArgsSchema.shape,
+    chartOfAccountsArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

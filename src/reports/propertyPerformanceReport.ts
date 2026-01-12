@@ -97,7 +97,7 @@ export function registerPropertyPerformanceReportTool(server: McpServer) {
   server.tool(
     'get_property_performance_report',
     'Retrieves the Property Performance report, showing financial performance metrics for properties within a specified date range. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. \'123\'), NOT names. Use respective directory reports first to lookup IDs by name if needed.',
-    propertyPerformanceArgsSchema.shape,
+    propertyPerformanceArgsSchema.shape as any,
     async (args: PropertyPerformanceArgs) => {
       const reportData = await getPropertyPerformanceReport(args);
       return {

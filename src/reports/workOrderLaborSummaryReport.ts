@@ -85,7 +85,7 @@ export function registerWorkOrderLaborSummaryReportTool(server: McpServer) {
   server.tool(
     "get_work_order_labor_summary_report",
     "Returns a report detailing work order labor based on specified filters.",
-    workOrderLaborSummaryInputSchema.shape,
+    workOrderLaborSummaryInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

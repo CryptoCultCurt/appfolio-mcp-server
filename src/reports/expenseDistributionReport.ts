@@ -73,7 +73,7 @@ export function registerExpenseDistributionReportTool(server: McpServer) {
   server.tool(
     "get_expense_distribution_report",
     "Returns expense distribution report for the given filters.",
-    expenseDistributionInputSchema.shape,
+    expenseDistributionInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

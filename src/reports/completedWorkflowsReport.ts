@@ -94,7 +94,7 @@ export function registerCompletedWorkflowsReportTool(server: McpServer) {
   server.tool(
     "get_completed_workflows_report",
     "Returns a report of completed workflows (processes) based on the provided filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, units_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use directory reports first to lookup IDs by name if needed.",
-    completedWorkflowsArgsSchema.shape,
+    completedWorkflowsArgsSchema.shape as any,
     async (toolArgs: z.infer<typeof completedWorkflowsArgsSchema>) => {
       const data = await getCompletedWorkflowsReport(toolArgs as CompletedWorkflowsArgs);
       return {

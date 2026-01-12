@@ -62,7 +62,7 @@ export function registerTrialBalanceByPropertyReportTool(server: McpServer) {
   server.tool(
     "get_trial_balance_by_property_report",
     "Generates a trial balance report by property.",
-    trialBalanceByPropertyArgsSchema.shape,
+    trialBalanceByPropertyArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

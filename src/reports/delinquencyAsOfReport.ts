@@ -200,7 +200,7 @@ export function registerDelinquencyAsOfReportTool(server: McpServer) {
   server.tool(
     "get_delinquency_as_of_report",
     "Returns delinquency as of report for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: tenant_statuses uses numeric codes: 0=Current, 1=Past, 2=Future, 3=Evict, 4=Notice.",
-    delinquencyAsOfBaseSchema.shape,
+    delinquencyAsOfBaseSchema.shape as any,
     async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema

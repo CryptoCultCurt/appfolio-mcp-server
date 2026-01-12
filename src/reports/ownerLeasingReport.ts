@@ -78,7 +78,7 @@ export function registerOwnerLeasingReportTool(server: McpServer) {
   server.tool(
     "get_owner_leasing_report",
     "Provides a leasing report tailored for property owners, showing leasing activity within a specified date range. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    ownerLeasingArgsSchema.shape,
+    ownerLeasingArgsSchema.shape as any,
     async (args: OwnerLeasingArgs) => {
       const data = await getOwnerLeasingReport(args);
       return {

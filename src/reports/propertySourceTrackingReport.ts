@@ -66,7 +66,7 @@ export function registerPropertySourceTrackingReportTool(server: McpServer) {
   server.tool(
     "get_property_source_tracking_report",
     "Returns property source tracking report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    propertySourceTrackingInputSchema.shape,
+    propertySourceTrackingInputSchema.shape as any,
     async (args: any, _extra: any) => {
       const data = await getPropertySourceTrackingReport(args as PropertySourceTrackingArgs);
       return {

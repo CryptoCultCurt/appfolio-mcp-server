@@ -208,7 +208,7 @@ export function registerRentRollItemizedReportTool(server: McpServer) {
   server.tool(
     "get_rent_roll_itemized_report",
     "Returns rent roll itemized report for the given filters. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids, gl_account_ids) must be numeric strings (e.g. '123'), NOT names. CRITICAL: gl_account_ids are internal database IDs, NOT GL account numbers! Do not use GL account numbers like '4630', '4635' - use the Chart of Accounts Report first to lookup the correct gl_account_ids.",
-    rentRollItemizedInputSchema.shape,
+    rentRollItemizedInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         console.log('Rent Roll Itemized Report - Received args:', JSON.stringify(args, null, 2));

@@ -90,7 +90,7 @@ export function registerScreeningAssessmentReportTool(server: McpServer) {
   server.tool(
     "get_screening_assessment_report",
     "Returns screening assessment report for the given filters.",
-    screeningAssessmentInputSchema.shape,
+    screeningAssessmentInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

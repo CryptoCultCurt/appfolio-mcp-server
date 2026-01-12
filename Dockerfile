@@ -11,7 +11,7 @@ RUN npm install --ignore-scripts --no-audit --production=false
 # Copy source code
 COPY . .
 
-# Build TypeScript
+# Build TypeScript using esbuild (fast bundler)
 RUN npm run build
 
 # Remove dev dependencies

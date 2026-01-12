@@ -58,7 +58,7 @@ export function registerCancelledWorkflowsReportTool(server: McpServer) {
   server.tool(
     "get_cancelled_workflows_report",
     "Retrieves a report of cancelled workflows, allowing filtering by various criteria such as properties, process templates, and date ranges.",
-    cancelledWorkflowsArgsSchema.shape,
+    cancelledWorkflowsArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

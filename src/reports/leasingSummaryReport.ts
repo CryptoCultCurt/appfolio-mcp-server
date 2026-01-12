@@ -96,7 +96,7 @@ export function registerLeasingSummaryReportTool(server: McpServer) {
   server.tool(
     "get_leasing_summary_report",
     "Provides a summary of leasing activities, including inquiries, showings, applications, and move-ins/outs. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    leasingSummaryArgsSchema.shape,
+    leasingSummaryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

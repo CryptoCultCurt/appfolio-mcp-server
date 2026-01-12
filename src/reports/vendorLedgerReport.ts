@@ -148,7 +148,7 @@ export function registerVendorLedgerReportTool(server: McpServer) {
   server.tool(
     "get_vendor_ledger_report",
     "Generates a report on vendor ledgers.",
-    vendorLedgerInputSchema.shape,
+    vendorLedgerInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

@@ -27,7 +27,8 @@
     "automation"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "esbuild src/index.ts --bundle --platform=node --target=node18 --outfile=dist/index.js --packages=external",
+    "build:tsc": "NODE_OPTIONS='--max-old-space-size=8192' tsc",
     "start": "node dist/index.js",
     "start:http": "MCP_MODE=http node dist/index.js",
     "dev": "ts-node src/index.ts",
@@ -54,6 +55,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/node": "^20.11.30",
+    "esbuild": "^0.27.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5"
   },

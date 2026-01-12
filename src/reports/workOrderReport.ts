@@ -294,7 +294,7 @@ export function registerWorkOrderReportTool(server: McpServer) {
   server.tool(
     "get_work_order_report",
     "Generates a report on work orders. IMPORTANT: All ID parameters (unit_ids, property_id, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    workOrderArgsBaseSchema.shape,
+    workOrderArgsBaseSchema.shape as any,
     async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema

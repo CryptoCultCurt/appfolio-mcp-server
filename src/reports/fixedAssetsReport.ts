@@ -59,7 +59,7 @@ export function registerFixedAssetsReportTool(server: McpServer) {
   server.tool(
     "get_fixed_assets_report",
     "Returns a report of fixed assets based on the provided filters.",
-    fixedAssetsArgsSchema.shape,
+    fixedAssetsArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

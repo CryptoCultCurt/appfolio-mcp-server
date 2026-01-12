@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { flatPropertyFilterSchema, transformToNestedProperties } from './sharedSchemas';
 
 export type AnnualBudgetCompArgsV2 = {
   property_visibility?: string;
@@ -34,20 +35,33 @@ export type AnnualBudgetComparativeResult = Array<{
   variance_note: string;
 }>;
 
-export const annualBudgetComparativeInputSchema = z.object({
-  property_visibility: z.string().optional().default("active").describe('Filter properties by status. Defaults to "active"'),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
+// Flattened schema for MCP tool registration
+const annualBudgetComparativeToolSchema = {
+  property_visibility: z.string().optional().default("active")
+    .describe('Filter properties by status. Defaults to "active"'),
+  ...flatPropertyFilterSchema,
   occurred_on_to: z.string().describe('The end date for the report period (YYYY-MM-DD)'),
-  additional_account_types: z.array(z.string()).optional().default([]).describe('Array of additional account types to include'),
+  additional_account_types: z.array(z.string()).optional().default([])
+    .describe('Array of additional account types to include'),
   gl_account_map_id: z.string().optional().describe('Filter by GL account map ID'),
-  level_of_detail: z.enum(["detail_view", "summary_view"]).optional().default("detail_view").describe('Specify the level of detail. Defaults to "detail_view"'),
-  columns: z.array(z.string()).optional().describe('Array of specific columns to include in the report'),
-  periods: z.any().describe('Periods')
+  level_of_detail: z.enum(["detail_view", "summary_view"]).optional().default("detail_view")
+    .describe('Specify the level of detail. Defaults to "detail_view"'),
+  columns: z.array(z.string()).optional().describe('Array of specific columns to include'),
+  periods: z.any().describe('Periods'),
+};
+
+const annualBudgetComparativeValidationSchema = z.object({
+  property_visibility: z.string().optional().default("active"),
+  properties_ids: z.array(z.string()).optional(),
+  property_groups_ids: z.array(z.string()).optional(),
+  portfolios_ids: z.array(z.string()).optional(),
+  owners_ids: z.array(z.string()).optional(),
+  occurred_on_to: z.string(),
+  additional_account_types: z.array(z.string()).optional().default([]),
+  gl_account_map_id: z.string().optional(),
+  level_of_detail: z.enum(["detail_view", "summary_view"]).optional().default("detail_view"),
+  columns: z.array(z.string()).optional(),
+  periods: z.any(),
 });
 
 export async function getAnnualBudgetComparativeReport(args: AnnualBudgetCompArgsV2): Promise<AnnualBudgetComparativeResult> {
@@ -65,11 +79,10 @@ export function registerAnnualBudgetComparativeReportTool(server: McpServer) {
   server.tool(
     "get_annual_budget_comparative_report",
     "Returns annual budget comparative report for the given filters.",
-    annualBudgetComparativeInputSchema.shape,
+    annualBudgetComparativeToolSchema,
     async (args, _extra: unknown) => {
       try {
-        // Validate arguments against schema
-        const parseResult = annualBudgetComparativeInputSchema.safeParse(args);
+        const parseResult = annualBudgetComparativeValidationSchema.safeParse(args);
         if (!parseResult.success) {
           const errorMessages = parseResult.error.errors.map(err => 
             `${err.path.join('.')}: ${err.message}`
@@ -77,7 +90,8 @@ export function registerAnnualBudgetComparativeReportTool(server: McpServer) {
           throw new Error(`Invalid arguments: ${errorMessages}`);
         }
 
-        const result = await getAnnualBudgetComparativeReport(parseResult.data as AnnualBudgetCompArgsV2);
+        const apiArgs = transformToNestedProperties(parseResult.data) as AnnualBudgetCompArgsV2;
+        const result = await getAnnualBudgetComparativeReport(apiArgs);
         return {
           content: [
             {
@@ -88,7 +102,6 @@ export function registerAnnualBudgetComparativeReportTool(server: McpServer) {
           ]
         };
       } catch (error) {
-        // Enhanced error reporting for debugging
         const errorMessage = error instanceof Error ? error.message : String(error);
         console.error(`Annual Budget Comparative Report Error:`, errorMessage);
         throw error;

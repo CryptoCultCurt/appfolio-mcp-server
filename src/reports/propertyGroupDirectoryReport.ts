@@ -92,7 +92,7 @@ export function registerPropertyGroupDirectoryReportTool(server: McpServer) {
   server.tool(
     'get_property_group_directory_report',
     'Get property group directory report from AppFolio. Shows properties organized by property groups and portfolios. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. "123"), NOT names. Use respective directory reports first to lookup IDs by name if needed.',
-    propertyGroupDirectoryArgsSchema.shape,
+    propertyGroupDirectoryArgsSchema.shape as any,
     async (args: any, _extra: unknown) => {
       try {
         // Validate arguments against schema

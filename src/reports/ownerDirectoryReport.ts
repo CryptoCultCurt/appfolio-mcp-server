@@ -87,7 +87,7 @@ export function registerOwnerDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_owner_directory_report",
     "Retrieves a DIRECTORY report with details about property owners. This returns ALL owners (with optional filters) - to find specific owners by name, call this report and search the results client-side. IMPORTANT: All ID parameters must be numeric strings, NOT names. The 'tags' parameter is for filtering by actual system tags, NOT for text search.",
-    ownerDirectoryArgsSchema.shape,
+    ownerDirectoryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

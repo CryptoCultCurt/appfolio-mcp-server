@@ -143,7 +143,7 @@ export function registerPropertyDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_property_directory_report",
     "Retrieves a property directory report with details about properties, including status, address, units count, and owner information. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use Owner Directory Report first to lookup owner IDs by name if needed.",
-    propertyDirectoryArgsSchema.shape,
+    propertyDirectoryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

@@ -169,7 +169,7 @@ export function registerAgedReceivablesDetailReportTool(server: McpServer) {
   server.tool(
     "get_aged_receivables_detail_report",
     "Returns aged receivables detail for the given filters. IMPORTANT: All ID parameters (properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    agedReceivablesDetailBaseSchema.shape,
+    agedReceivablesDetailBaseSchema.shape as any,
     async (args: unknown, _extra: unknown) => {
       try {
         // Validate arguments against schema

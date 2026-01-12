@@ -84,7 +84,7 @@ export function registerResidentFinancialActivityReportTool(server: McpServer) {
   server.tool(
     "get_resident_financial_activity_report",
     "Returns resident financial activity report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    residentFinancialActivityInputSchema.shape,
+    residentFinancialActivityInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

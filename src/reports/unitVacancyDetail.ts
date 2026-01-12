@@ -131,7 +131,7 @@ export function registerUnitVacancyDetailReportTool(server: McpServer) {
   server.tool(
     "get_unit_vacancy_detail_report",
     "Generates a report on unit vacancies. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    unitVacancyDetailArgsSchema.shape,
+    unitVacancyDetailArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

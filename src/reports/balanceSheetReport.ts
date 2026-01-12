@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { makeAppfolioApiCall } from '../appfolio';
+import { flatPropertyFilterSchema, transformToNestedProperties } from './sharedSchemas';
 
 export type BalanceSheetArgs = {
   property_visibility?: "active" | "hidden" | "all";
@@ -45,15 +46,28 @@ export async function getBalanceSheetReport(args: BalanceSheetArgs): Promise<Bal
   return makeAppfolioApiCall<BalanceSheetResult>('balance_sheet.json', payload);
 }
 
-export const balanceSheetInputSchema = z.object({
-  property_visibility: z.enum(["active", "hidden", "all"]).default("active").optional(),
-  properties: z.object({
-    properties_ids: z.array(z.string()).optional(),
-    property_groups_ids: z.array(z.string()).optional(),
-    portfolios_ids: z.array(z.string()).optional(),
-    owners_ids: z.array(z.string()).optional(),
-  }).optional(),
+// Flattened schema for MCP tool registration (avoids TypeScript type depth issues)
+const balanceSheetToolSchema = {
+  property_visibility: z.enum(["active", "hidden", "all"]).default("active").optional()
+    .describe('Filter properties by status. Defaults to "active"'),
+  ...flatPropertyFilterSchema,
   posted_on_to: z.string().describe("Required. Date to run the report as of in YYYY-MM-DD format."),
+  gl_account_map_id: z.string().optional().describe('Filter by GL account map ID'),
+  level_of_detail: z.enum(["detail_view", "summary_view"]).default("detail_view").optional()
+    .describe('Level of detail. Defaults to "detail_view"'),
+  include_zero_balance_gl_accounts: z.enum(["0", "1"]).default("0").optional()
+    .describe('Include GL accounts with zero balance. Defaults to "0"'),
+  columns: z.array(z.string()).optional().describe('Specific columns to include'),
+};
+
+// Validation schema
+const balanceSheetValidationSchema = z.object({
+  property_visibility: z.enum(["active", "hidden", "all"]).default("active").optional(),
+  properties_ids: z.array(z.string()).optional(),
+  property_groups_ids: z.array(z.string()).optional(),
+  portfolios_ids: z.array(z.string()).optional(),
+  owners_ids: z.array(z.string()).optional(),
+  posted_on_to: z.string(),
   gl_account_map_id: z.string().optional(),
   level_of_detail: z.enum(["detail_view", "summary_view"]).default("detail_view").optional(),
   include_zero_balance_gl_accounts: z.enum(["0", "1"]).default("0").optional(),
@@ -64,11 +78,11 @@ export function registerBalanceSheetReportTool(server: McpServer) {
   server.tool(
     "get_balance_sheet_report",
     "Returns the balance sheet report for the given filters.",
-    balanceSheetInputSchema.shape,
+    balanceSheetToolSchema,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema
-        const parseResult = balanceSheetInputSchema.safeParse(args);
+        const parseResult = balanceSheetValidationSchema.safeParse(args);
         if (!parseResult.success) {
           const errorMessages = parseResult.error.errors.map(err => 
             `${err.path.join('.')}: ${err.message}`
@@ -76,7 +90,8 @@ export function registerBalanceSheetReportTool(server: McpServer) {
           throw new Error(`Invalid arguments: ${errorMessages}`);
         }
 
-        const result = await getBalanceSheetReport(parseResult.data as BalanceSheetArgs);
+        const apiArgs = transformToNestedProperties(parseResult.data) as BalanceSheetArgs;
+        const result = await getBalanceSheetReport(apiArgs);
         return {
           content: [
             {

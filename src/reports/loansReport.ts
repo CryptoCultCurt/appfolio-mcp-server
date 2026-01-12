@@ -78,7 +78,7 @@ export function registerLoansReportTool(server: McpServer) {
   server.tool(
     "get_loans_report",
     "Retrieves a report on loans associated with properties.",
-    loansArgsSchema.shape,
+    loansArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

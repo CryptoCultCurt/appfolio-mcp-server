@@ -73,7 +73,7 @@ export function registerBudgetComparativeReportTool(server: McpServer) {
   server.tool(
     "get_budget_comparative_report",
     "Returns budget comparative report for the given filters.",
-    budgetComparativeInputSchema.shape,
+    budgetComparativeInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

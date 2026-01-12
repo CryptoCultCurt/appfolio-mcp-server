@@ -135,7 +135,7 @@ export function registerRentalApplicationsReportTool(server: McpServer) {
   server.tool(
     "get_rental_applications_report",
     "Returns rental applications report for the given filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    rentalApplicationsInputSchema.shape,
+    rentalApplicationsInputSchema.shape as any,
     async (args: any, _extra: any) => {
       const data = await getRentalApplicationsReport(args as RentalApplicationsArgs);
       return {

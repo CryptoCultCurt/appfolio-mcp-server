@@ -95,7 +95,7 @@ export function registerOccupancySummaryReportTool(server: McpServer) {
   server.tool(
     "get_occupancy_summary_report",
     "Generates a summary of property occupancy, including number of units, occupied units, and vacancy rates. IMPORTANT: All ID parameters must be numeric strings (e.g. '123'), NOT names. Use directory reports to lookup IDs by name if needed. Common columns: 'number_of_units', 'occupied', 'vacant_rented', 'vacant_unrented', 'percent_occupied'.",
-    occupancySummaryArgsSchema.shape,
+    occupancySummaryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         console.log('Occupancy Summary Report - received arguments:', JSON.stringify(args, null, 2));

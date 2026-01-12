@@ -141,7 +141,7 @@ export function registerTenantDirectoryReportTool(server: McpServer) {
   server.tool(
     "get_tenant_directory_report",
     "Returns tenant directory report for the given filters. IMPORTANT: All ID parameters (properties_ids, owners_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    tenantDirectoryInputSchema.shape,
+    tenantDirectoryInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

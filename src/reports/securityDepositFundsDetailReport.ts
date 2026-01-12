@@ -146,7 +146,7 @@ export function registerSecurityDepositFundsDetailReportTool(server: McpServer) 
   server.tool(
     "get_security_deposit_funds_detail_report",
     "Returns security deposit funds detail report for the given filters.",
-    securityDepositFundsDetailInputSchema.shape,
+    securityDepositFundsDetailInputSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema

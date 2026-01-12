@@ -157,7 +157,7 @@ export function registerRenewalSummaryReportTool(server: McpServer) {
   server.tool(
     "get_renewal_summary_report",
     "Provides a summary of lease renewals. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed. NOTE: All string parameters should be properly quoted JSON strings (e.g. \"active\", not active).",
-    renewalSummaryArgsSchema.shape,
+    renewalSummaryArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Log the raw arguments to help debug parsing issues

@@ -87,7 +87,7 @@ export function registerUnitInspectionReportTool(server: McpServer) {
   server.tool(
     "get_unit_inspection_report",
     "Generates a report on unit inspections. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    unitInspectionArgsSchema.shape,
+    unitInspectionArgsSchema.shape as any,
     async (args: any, _extra: any) => {
       const data = await getUnitInspectionReport(args as UnitInspectionArgs);
       return {

@@ -97,7 +97,7 @@ export async function getUnitDirectoryReport(args: UnitDirectoryArgs): Promise<U
     server.tool(
       "get_unit_directory_report",
       "Retrieves a unit directory report with details about units in properties. IMPORTANT: All ID parameters (owners_ids, properties_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-      unitDirectoryArgsSchema.shape,
+      unitDirectoryArgsSchema.shape as any,
       async (args, _extra: unknown) => {
         try {
           // Validate arguments against schema

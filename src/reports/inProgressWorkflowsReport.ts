@@ -108,7 +108,7 @@ export function registerInProgressWorkflowsReportTool(server: McpServer) {
   server.tool(
     "get_in_progress_workflows_report",
     "Returns a report of in-progress workflows based on the provided filters. IMPORTANT: All ID parameters (owners_ids, properties_ids, units_ids, etc.) must be numeric strings (e.g. '123'), NOT names. Use directory reports first to lookup IDs by name if needed.",
-    inProgressWorkflowsArgsSchema.shape,
+    inProgressWorkflowsArgsSchema.shape as any,
     async (toolArgs: z.infer<typeof inProgressWorkflowsArgsSchema>) => {
       const data = await getInProgressWorkflowsReport(toolArgs as InProgressWorkflowsArgs);
       return {

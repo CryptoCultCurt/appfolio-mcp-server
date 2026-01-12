@@ -58,7 +58,7 @@ export async function getTenantLedgerReport(args: TenantLedgerArgs): Promise<Ten
     server.tool(
       "get_tenant_ledger_report",
       "Generates a report on tenant ledgers.",
-      tenantLedgerArgsSchema.shape,
+      tenantLedgerArgsSchema.shape as any,
       async (args, _extra: unknown) => {
         try {
           // Validate arguments against schema

@@ -145,7 +145,7 @@ export function registerLeaseExpirationDetailReportTool(server: McpServer) {
   server.tool(
     "get_lease_expiration_detail_by_month_report",
     "Retrieves a report detailing lease expirations by month, filterable by properties, date range, and other criteria. IMPORTANT: All ID parameters (properties_ids, property_groups_ids, portfolios_ids, owners_ids) must be numeric strings (e.g. '123'), NOT names. Use respective directory reports first to lookup IDs by name if needed.",
-    leaseExpirationDetailArgsSchema.shape,
+    leaseExpirationDetailArgsSchema.shape as any,
     async (args, _extra: unknown) => {
       try {
         // Validate arguments against schema
