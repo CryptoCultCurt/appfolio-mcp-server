@@ -261,7 +261,8 @@ async function startHttpServer() {
   const proxyRegistrationUrl = process.env.OAUTH_PROXY_REGISTRATION_URL;
   const oauthIssuer = process.env.OAUTH_ISSUER; // Upstream issuer
   // Default to common OAuth scopes if not specified
-  const defaultScopes = "openid profile email";
+  // Note: offline_access is required for refresh tokens
+  const defaultScopes = "openid profile email offline_access";
   const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || defaultScopes).split(/\s+/).filter(Boolean);
   const serviceDocumentationUrl = process.env.OAUTH_SERVICE_DOC_URL;
   const requestedPort = Number(process.env.HTTP_PORT || process.env.PORT || 3000);
