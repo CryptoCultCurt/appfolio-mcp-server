@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/cryptocultcurt-appfolio-mcp-server-badge.png)](https://mseep.ai/app/cryptocultcurt-appfolio-mcp-server)
+
 # Appfolio MCP Server (@fluegeldao/appfolio-mcp-server)
 [![smithery badge](https://smithery.ai/badge/@CryptoCultCurt/appfolio-mcp-server)](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server)
 
