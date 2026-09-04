@@ -1,5 +1,5 @@
 # Appfolio MCP Server (@fluegeldao/appfolio-mcp-server)
-[![smithery badge](https://smithery.ai/badge/@CryptoCultCurt/appfolio-mcp-server)](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server)
+[![LightNow capabilities](https://lightnow.ai/badge/io.github.cryptocultcurt/appfolio-mcp-server)](https://lightnow.ai/servers/io.github.cryptocultcurt/appfolio-mcp-server)
 
 A Model Context Protocol (MCP) server providing tools to interact with the Appfolio Property Manager Reporting API.
 
@@ -48,4 +48,4 @@ npm install @fluegeldao/appfolio-mcp-server
 npx @fluegeldao/appfolio-mcp-server
 ```
 
-[![smithery badge](https://smithery.ai/badge/@CryptoCultCurt/appfolio-mcp-server)](https://smithery.ai/server/@CryptoCultCurt/appfolio-mcp-server)
+[![LightNow capabilities](https://lightnow.ai/badge/io.github.cryptocultcurt/appfolio-mcp-server)](https://lightnow.ai/servers/io.github.cryptocultcurt/appfolio-mcp-server)
