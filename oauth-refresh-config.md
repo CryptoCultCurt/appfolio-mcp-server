@@ -64,3 +64,17 @@ Once refresh tokens are enabled, Tasklet will be able to:
 1. Receive both access and refresh tokens during initial OAuth flow
 2. Automatically refresh expired access tokens using the refresh token
 3. Maintain long-running authentication without user intervention
+
+## Service API keys (server-to-server, no OAuth)
+
+For trusted backend callers that cannot complete a browser OAuth flow on a schedule
+(e.g. the net-worth dashboard's cron jobs), set:
+
+```bash
+# one or more opaque secrets, comma-separated, each at least 32 characters
+SERVICE_API_KEYS="$(openssl rand -hex 32)"
+```
+
+A request whose `Authorization: Bearer <token>` exactly matches one of these keys is
+accepted without JWT verification. Interactive MCP clients keep using OAuth. Rotate a
+key by adding the new one, redeploying callers, then removing the old one.

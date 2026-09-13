@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import dotenv from "dotenv";
+import { timingSafeEqual } from "node:crypto";
 import express from "express";
 import cors from "cors";
 import { randomUUID } from "node:crypto";
@@ -287,6 +288,25 @@ async function startHttpServer() {
   const inspectorMode = process.env.INSPECTOR_MODE === "true"; // Special mode for MCP Inspector OAuth bug
   const hybridMode = process.env.HYBRID_MODE === "true"; // Accept both OAuth and no-auth requests
   const useAuth = Boolean(jwksUrl) && !bypassAuth && !inspectorMode && !hybridMode;
+
+  // Long-lived service keys for trusted server-to-server callers (e.g. the net-worth
+  // dashboard's cron jobs). Comma-separated list of opaque secrets. A request whose
+  // Bearer token exactly matches one of these skips JWT verification. Interactive MCP
+  // clients (Claude, ChatGPT) keep using OAuth as before.
+  const serviceKeys = (process.env.SERVICE_API_KEYS || "")
+    .split(",")
+    .map((k) => k.trim())
+    .filter((k) => k.length >= 32);
+  const isServiceKey = (token: string): boolean => {
+    const candidate = Buffer.from(token);
+    return serviceKeys.some((key) => {
+      const expected = Buffer.from(key);
+      return expected.length === candidate.length && timingSafeEqual(expected, candidate);
+    });
+  };
+  if (serviceKeys.length > 0) {
+    console.log(`🔑 ${serviceKeys.length} service API key(s) enabled for server-to-server access`);
+  }
   
   if (bypassAuth) {
     console.log("⚠️ WARNING: Authentication bypassed for testing. Do not use in production!");
@@ -321,6 +341,12 @@ async function startHttpServer() {
           token = authHeader;
         }
         
+        if (isServiceKey(token)) {
+          console.log(`✅ Service API key accepted`);
+          (req as any).auth = { token, clientId: "service-key", scopes: ["service"] };
+          return next();
+        }
+
         console.log(`🔍 Extracted token (first 20 chars): ${token.substring(0, 20)}...`);
         
         // Use the original requireBearerAuth but with our extracted token

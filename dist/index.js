@@ -25,9 +25,10 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 
 // src/index.ts
 var import_dotenv9 = __toESM(require("dotenv"));
+var import_node_crypto = require("node:crypto");
 var import_express = __toESM(require("express"));
 var import_cors = __toESM(require("cors"));
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var import_node_net = __toESM(require("node:net"));
 var import_mcp = require("@modelcontextprotocol/sdk/server/mcp.js");
 var import_stdio = require("@modelcontextprotocol/sdk/server/stdio.js");
@@ -3903,7 +3904,7 @@ async function startHttpServer() {
   const proxyRevocationUrl = process.env.OAUTH_PROXY_REVOCATION_URL;
   const proxyRegistrationUrl = process.env.OAUTH_PROXY_REGISTRATION_URL;
   const oauthIssuer = process.env.OAUTH_ISSUER;
-  const defaultScopes = "openid profile email";
+  const defaultScopes = "openid profile email offline_access";
   const oauthScopesSupported = (process.env.OAUTH_SCOPES_SUPPORTED || defaultScopes).split(/\s+/).filter(Boolean);
   const serviceDocumentationUrl = process.env.OAUTH_SERVICE_DOC_URL;
   const requestedPort = Number(process.env.HTTP_PORT || process.env.PORT || 3e3);
@@ -3921,6 +3922,17 @@ async function startHttpServer() {
   const inspectorMode = process.env.INSPECTOR_MODE === "true";
   const hybridMode = process.env.HYBRID_MODE === "true";
   const useAuth = Boolean(jwksUrl) && !bypassAuth && !inspectorMode && !hybridMode;
+  const serviceKeys = (process.env.SERVICE_API_KEYS || "").split(",").map((k) => k.trim()).filter((k) => k.length >= 32);
+  const isServiceKey = (token) => {
+    const candidate = Buffer.from(token);
+    return serviceKeys.some((key) => {
+      const expected = Buffer.from(key);
+      return expected.length === candidate.length && (0, import_node_crypto.timingSafeEqual)(expected, candidate);
+    });
+  };
+  if (serviceKeys.length > 0) {
+    console.log(`\u{1F511} ${serviceKeys.length} service API key(s) enabled for server-to-server access`);
+  }
   if (bypassAuth) {
     console.log("\u26A0\uFE0F WARNING: Authentication bypassed for testing. Do not use in production!");
   } else if (inspectorMode) {
@@ -3945,6 +3957,11 @@ async function startHttpServer() {
     } else {
       console.log(`\u26A0\uFE0F Authorization header doesn't start with 'Bearer ', treating as raw token`);
       token = authHeader;
+    }
+    if (isServiceKey(token)) {
+      console.log(`\u2705 Service API key accepted`);
+      req.auth = { token, clientId: "service-key", scopes: ["service"] };
+      return next();
     }
     console.log(`\u{1F50D} Extracted token (first 20 chars): ${token.substring(0, 20)}...`);
     const verifier = createJwksVerifier({ jwksUrl, issuer, audience, inlineJwksJson });
@@ -4077,7 +4094,7 @@ async function startHttpServer() {
   }, 5 * 60 * 1e3);
   const createNewSession = async () => {
     const transport = new import_streamableHttp.StreamableHTTPServerTransport({
-      sessionIdGenerator: () => (0, import_node_crypto.randomUUID)(),
+      sessionIdGenerator: () => (0, import_node_crypto2.randomUUID)(),
       enableJsonResponse: true,
       onsessioninitialized: (sid) => {
         transports[sid] = transport;
